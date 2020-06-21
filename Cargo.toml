@@ -1,0 +1,26 @@
+[package]
+name = "fullstack-rs"
+version = "0.1.0"
+authors = ["synul <synul@mailbox.org>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-std = { version = "1.6", features = ["attributes"] }
+dotenv = "0.15.0"
+futures = { version = "0.3", features = ["compat"] }
+http-types = "2.4.0"
+serde = { version = "1.0.115", features = ["derive"] }
+serde_json = "1.0.59"
+sqlx = { version = "0.3", features = [ "postgres", "macros" ] }
+tide = "0.13.0"
+
+assert-json-diff = "1.1.0"
+http-service = "0.5.0"
+http-service-mock = "0.5.0"
+config = "0.10.1"
+
+[dev-dependencies]
+reqwest = "0.10.9"
+
