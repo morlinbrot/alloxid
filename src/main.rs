@@ -7,8 +7,8 @@ use tide::http::StatusCode;
 use tide::security::{CorsMiddleware, Origin};
 use tide::{Request, Response};
 
-mod configuration;
-use configuration::{get_config, Configuration};
+mod settings;
+use settings::Settings;
 
 mod endpoints;
 use endpoints::*;
@@ -80,13 +80,13 @@ async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::
 #[async_std::main]
 async fn main() -> Result<(), sqlx::Error> {
     //tide::log::start();
-    let Configuration { db_url, host, port } = get_config();
+    let Settings { app, database } = Settings::new().expect("Failed to load configuration.");
 
-    let db_pool = PgPool::new(&db_url)
+    let db_pool = PgPool::new(&database.url)
         .await
         .expect("Failed to create db pool.");
 
-    let address = format!("{}:{}", host, port);
+    let address = format!("{}:{}", app.host, app.port);
 
     let app = configure_app(db_pool)
         .await
@@ -94,5 +94,6 @@ async fn main() -> Result<(), sqlx::Error> {
 
     println!("Server listening on {}", address);
     app.listen(address).await?;
+
     Ok(())
 }

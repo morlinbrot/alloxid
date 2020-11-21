@@ -1,12 +1,12 @@
-use futures::{executor::block_on, prelude::*};
-use http_service::{HttpService, Response};
-use http_types::Request;
-
-#[derive(Debug)]
-pub struct TestBackend<T: HttpService> {
-    service: T,
-    connection: T::Connection,
-}
+//use futures::{executor::block_on, prelude::*};
+//use http_service::{HttpService, Response};
+//use http_types::Request;
+//
+//#[derive(Debug)]
+//pub struct TestBackend<T: HttpService> {
+//    service: T,
+//    connection: T::Connection,
+//}
 
 //impl<T: HttpService> TestBackend<T> {
 //    fn wrap(service: T) -> Result<Self, <T::ConnectionFuture as TryFuture>::Error> {

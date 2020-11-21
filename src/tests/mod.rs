@@ -3,11 +3,14 @@
 //use http_types::{Method, Request, Url};
 //use serde_json::{json, Value};
 
-mod test_helpers;
+//use crate::settings::Settings;
+
+//mod test_helpers;
 //use test_helpers::*;
 
 #[async_std::test]
 async fn it_works() {
+    //let config = Settings::new().unwrap();
     //let server = make_server().await;
     //let mut server = make_test_server(server).unwrap();
 
