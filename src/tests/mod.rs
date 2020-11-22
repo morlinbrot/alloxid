@@ -1,24 +1,16 @@
-//use crate::make_server;
-//use assert_json_diff::assert_json_include;
-//use http_types::{Method, Request, Url};
-//use serde_json::{json, Value};
-
-//use crate::settings::Settings;
-
-//mod test_helpers;
-//use test_helpers::*;
+mod test_helpers;
+use test_helpers::spawn_test_app;
 
 #[async_std::test]
 async fn it_works() {
-    //let config = Settings::new().unwrap();
-    //let server = make_server().await;
-    //let mut server = make_test_server(server).unwrap();
+    let app = spawn_test_app().await;
 
-    //let req = Request::new(Method::Get, Url::parse("http://example.com/").unwrap());
-    //let res = server.simulate(req).unwrap();
-    //assert_eq!(res.status(), 200);
+    let address = &format!("http://{}/health-check", app.address);
+    dbg!(address.clone());
 
-    //let body = res.body_string().await.unwrap();
-    //let json: Value = serde_json::from_str(&body).unwrap();
-    //assert_json_include!(actual: json, expected: json!([1, 2, 3]));
+    let res = surf::get(address)
+        .await
+        .expect("Failed to execute GET request at /health-check.");
+
+    assert_eq!(res.status(), 200);
 }

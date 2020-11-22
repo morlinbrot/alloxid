@@ -1,3 +1,5 @@
+use futures::Future;
+use std::pin::Pin;
 use tide::{Next, Request};
 
 #[derive(Debug)]
@@ -19,4 +21,3 @@ pub fn logger<'a>(req: Request<State>, next: Next<'a, State>) -> BoxedTideResult
         Ok(res)
     })
 }
-

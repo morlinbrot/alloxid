@@ -16,8 +16,8 @@ use endpoints::*;
 #[cfg(test)]
 mod tests;
 
-//mod log_middleware;
-//use log_middleware::logger;
+mod log_middleware;
+use log_middleware::logger;
 
 #[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
 struct Todo {
@@ -42,7 +42,13 @@ pub struct State {
     db_pool: PgPool,
 }
 
-async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::Error> {
+async fn configure_app() -> Result<tide::Server<State>, std::io::Error> {
+    let Settings { database, .. } = Settings::new().expect("Failed to load configuration.");
+
+    let db_pool = PgPool::new(&database.url)
+        .await
+        .expect("Failed to create db pool.");
+
     let state = State {
         db_pool: db_pool.clone(),
     };
@@ -55,7 +61,7 @@ async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::
         .allow_credentials(false);
 
     app.with(cors);
-    //app.with(logger);
+    app.with(logger);
 
     //app.at("/").get(|_| async {
     //    Ok(format!(
@@ -80,17 +86,10 @@ async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::
 #[async_std::main]
 async fn main() -> Result<(), sqlx::Error> {
     //tide::log::start();
-    let Settings { app, database } = Settings::new().expect("Failed to load configuration.");
-
-    let db_pool = PgPool::new(&database.url)
-        .await
-        .expect("Failed to create db pool.");
-
+    let Settings { app, .. } = Settings::new().expect("Failed to load configuration.");
     let address = format!("{}:{}", app.host, app.port);
 
-    let app = configure_app(db_pool)
-        .await
-        .expect("Failed to configure app.");
+    let app = configure_app().await.expect("Failed to configure app.");
 
     println!("Server listening on {}", address);
     app.listen(address).await?;
