@@ -16,8 +16,8 @@ use endpoints::*;
 #[cfg(test)]
 mod tests;
 
-mod log_middleware;
-use log_middleware::logger;
+//mod log_middleware;
+//use log_middleware::logger;
 
 #[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
 struct Todo {
@@ -61,7 +61,7 @@ async fn configure_app() -> Result<tide::Server<State>, std::io::Error> {
         .allow_credentials(false);
 
     app.with(cors);
-    app.with(logger);
+    //app.with(logger);
 
     //app.at("/").get(|_| async {
     //    Ok(format!(
@@ -79,6 +79,9 @@ async fn configure_app() -> Result<tide::Server<State>, std::io::Error> {
     app.at("/api/all").get(get_all);
     app.at("/api/todo").post(new_todo);
     app.at("/api/todo/:id").get(get_todo);
+
+    #[cfg(not(test))]
+    tide::log::start();
 
     Ok(app)
 }

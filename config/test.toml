@@ -1,2 +1,2 @@
 [database]
-url = "postgres://dbuser:dbuser@localhost/fullstack"
+name = "fullstack"
