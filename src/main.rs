@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
+use uuid::Uuid;
 //use std::future::Future;
 //use std::pin::Pin;
 use tide::http::headers::HeaderValue;
@@ -37,6 +38,17 @@ impl Todo {
     }
 }
 
+#[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
+struct CreateUser {
+    username: String,
+}
+
+#[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
+struct User {
+    id: Uuid,
+    username: String,
+}
+
 #[derive(Clone, Debug)]
 pub struct State {
     db_pool: PgPool,
@@ -45,7 +57,7 @@ pub struct State {
 async fn configure_app() -> Result<tide::Server<State>, std::io::Error> {
     let Settings { database, .. } = Settings::new().expect("Failed to load configuration.");
 
-    let db_pool = PgPool::new(&database.url)
+    let db_pool = PgPool::connect(&database.url)
         .await
         .expect("Failed to create db pool.");
 
@@ -79,6 +91,7 @@ async fn configure_app() -> Result<tide::Server<State>, std::io::Error> {
     app.at("/api/all").get(get_all);
     app.at("/api/todo").post(new_todo);
     app.at("/api/todo/:id").get(get_todo);
+    app.at("/user").post(new_user);
 
     #[cfg(not(test))]
     tide::log::start();

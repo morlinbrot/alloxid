@@ -1,10 +1,10 @@
 mod test_helpers;
 use test_helpers::spawn_test_app;
 
-use super::Todo;
+use super::{Todo, User};
 
 #[async_std::test]
-async fn it_works() {
+async fn health_check() {
     let app = spawn_test_app().await;
 
     let route = "/health-check";
@@ -17,7 +17,7 @@ async fn it_works() {
 }
 
 #[async_std::test]
-async fn returns_all_todos() {
+async fn get_todos() {
     let app = spawn_test_app().await;
 
     let route = "/api/all";
@@ -30,4 +30,25 @@ async fn returns_all_todos() {
 
     assert_eq!(res.status(), 200);
     assert_eq!(todos.len(), 1);
+}
+
+#[async_std::test]
+async fn create_user() {
+    let app = spawn_test_app().await;
+
+    let route = "/user";
+
+    let username = "findus";
+    let json = serde_json::json!({ "username": username });
+
+    let mut res = surf::post(format!("{}{}", app.address, &route))
+        .body(http_types::Body::from_json(&json).unwrap())
+        .await
+        .expect(&format!("Failed to execute POST request at {}", &route));
+
+    let user: User = res.body_json().await.unwrap();
+
+    assert_eq!(res.status(), 200);
+    assert!(!user.id.is_nil());
+    assert_eq!(user.username, username);
 }
