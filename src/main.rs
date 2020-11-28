@@ -17,7 +17,7 @@ use endpoints::*;
 #[cfg(test)]
 mod tests;
 
-//mod log_middleware;
+// mod log_middleware;
 //use log_middleware::logger;
 
 #[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
@@ -54,16 +54,8 @@ pub struct State {
     db_pool: PgPool,
 }
 
-async fn configure_app() -> Result<tide::Server<State>, std::io::Error> {
-    let Settings { database, .. } = Settings::new().expect("Failed to load configuration.");
-
-    let db_pool = PgPool::connect(&database.url)
-        .await
-        .expect("Failed to create db pool.");
-
-    let state = State {
-        db_pool: db_pool.clone(),
-    };
+async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::Error> {
+    let state = State { db_pool };
 
     let mut app = tide::with_state(state);
 
@@ -73,7 +65,7 @@ async fn configure_app() -> Result<tide::Server<State>, std::io::Error> {
         .allow_credentials(false);
 
     app.with(cors);
-    //app.with(logger);
+    app.with(tide::log::LogMiddleware::new());
 
     //app.at("/").get(|_| async {
     //    Ok(format!(
@@ -93,19 +85,22 @@ async fn configure_app() -> Result<tide::Server<State>, std::io::Error> {
     app.at("/api/todo/:id").get(get_todo);
     app.at("/user").post(new_user);
 
-    #[cfg(not(test))]
-    tide::log::start();
-
     Ok(app)
 }
 
 #[async_std::main]
 async fn main() -> Result<(), sqlx::Error> {
     //tide::log::start();
-    let Settings { app, .. } = Settings::new().expect("Failed to load configuration.");
+    let Settings { app, database } = Settings::new().expect("Failed to load configuration.");
     let address = format!("{}:{}", app.host, app.port);
 
-    let app = configure_app().await.expect("Failed to configure app.");
+    let db_pool = PgPool::connect(&database.url())
+        .await
+        .expect("Failed to create db pool.");
+
+    let app = configure_app(db_pool)
+        .await
+        .expect("Failed to configure app.");
 
     println!("Server listening on {}", address);
     app.listen(address).await?;

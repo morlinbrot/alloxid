@@ -20,7 +20,6 @@ pub struct Database {
     pub password: String,
     pub port: usize,
     pub username: String,
-    pub url: String,
 }
 
 impl Settings {
@@ -36,22 +35,23 @@ impl Settings {
         // Eg.. `APP_DEBUG=1 ./target/app` would set the `debug` key
         config.merge(Environment::with_prefix("app"))?;
 
-        let Database {
-            host,
-            name,
-            password,
-            port,
-            username,
-            ..
-        } = config.get("database")?;
-
-        let url = format!(
-            "postgres://{}:{}@{}:{}/{}",
-            username, password, host, port, name
-        );
-
-        config.set("database.url", url)?;
-
         config.try_into()
+    }
+}
+
+impl Database {
+    pub fn url(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}/{}",
+            self.username, self.password, self.host, self.port, self.name
+        )
+    }
+
+    #[cfg(test)]
+    pub fn url_without_db(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}",
+            self.username, self.password, self.host, self.port
+        )
     }
 }

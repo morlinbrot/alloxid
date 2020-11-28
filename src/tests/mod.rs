@@ -1,11 +1,13 @@
 mod test_helpers;
-use test_helpers::spawn_test_app;
+use test_helpers::{spawn_test_app, TestDb};
 
 use super::{Todo, User};
 
 #[async_std::test]
 async fn health_check() {
-    let app = spawn_test_app().await;
+    tide::log::start();
+    let test_db = TestDb::new().await;
+    let app = spawn_test_app(test_db.pool()).await;
 
     let route = "/health-check";
 
@@ -18,7 +20,8 @@ async fn health_check() {
 
 #[async_std::test]
 async fn get_todos() {
-    let app = spawn_test_app().await;
+    let test_db = TestDb::new().await;
+    let app = spawn_test_app(test_db.pool()).await;
 
     let route = "/api/all";
 
@@ -34,11 +37,12 @@ async fn get_todos() {
 
 #[async_std::test]
 async fn create_user() {
-    let app = spawn_test_app().await;
+    let test_db = TestDb::new().await;
+    let app = spawn_test_app(test_db.pool()).await;
 
     let route = "/user";
 
-    let username = "findus";
+    let username = "synul";
     let json = serde_json::json!({ "username": username });
 
     let mut res = surf::post(format!("{}{}", app.address, &route))

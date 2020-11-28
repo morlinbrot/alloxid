@@ -7,5 +7,4 @@ host = "127.0.0.1"
 name = "fullstack"
 password = "password"
 port = 54321
-url = ""
 username = "postgres"
