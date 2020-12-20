@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use tide::{http::StatusCode, Request, Response};
 use uuid::Uuid;
 
@@ -52,15 +53,26 @@ pub async fn new_user(mut req: Request<State>) -> tide::Result {
     let CreateUser { username } = req.body_json().await?;
     let id = Uuid::new_v4();
 
-    // TODO: Make this return a User directly.
+    let hashed_password = "".to_string();
+    let date = Utc::now();
+
     let user = sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (id, username) VALUES ( $1, $2 )
+        INSERT INTO users (
+            id,
+            username,
+            hashed_password,
+            created_at,
+            updated_at
+        ) VALUES ( $1, $2, $3, $4, $5)
         RETURNING *
         "#,
         id,
         username,
+        hashed_password,
+        date,
+        date,
     )
     .fetch_one(pool)
     .await?;

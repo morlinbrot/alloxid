@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
 use uuid::Uuid;
@@ -47,6 +48,9 @@ struct CreateUser {
 struct User {
     id: Uuid,
     username: String,
+    hashed_password: String,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
 }
 
 #[derive(Clone, Debug)]
