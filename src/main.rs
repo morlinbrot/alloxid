@@ -69,7 +69,12 @@ async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::
         .allow_credentials(false);
 
     app.with(cors);
+
     app.with(tide::log::LogMiddleware::new());
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "INFO");
+    }
+    pretty_env_logger::try_init().ok();
 
     //app.at("/").get(|_| async {
     //    Ok(format!(
