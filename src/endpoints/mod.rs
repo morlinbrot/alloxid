@@ -1,8 +1,9 @@
 use chrono::prelude::*;
+use sqlx::PgPool;
 use tide::{http::StatusCode, Request, Response};
 use uuid::Uuid;
 
-use crate::{CreateUser, State, Todo, User};
+use crate::{RawUserData, State, Todo, User, ValidUserData};
 
 pub async fn get_all(req: Request<State>) -> tide::Result {
     let pool = &req.state().db_pool;
@@ -46,17 +47,32 @@ pub async fn new_todo(mut req: Request<State>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn new_user(mut req: Request<State>) -> tide::Result {
+pub async fn create_user(mut req: Request<State>) -> tide::Result {
     // Only cloning an Arc here so no real costs involved.
     let pool = &req.state().db_pool.clone();
 
-    let CreateUser { username } = req.body_json().await?;
-    let id = Uuid::new_v4();
+    let create_user: RawUserData = req.body_json().await?;
 
-    let hashed_password = "".to_string();
+    let valid_user_data = ValidUserData::parse(create_user).expect("Failed to parse valid user.");
+
+    let new_user = insert_new_user(pool, valid_user_data).await?;
+    let json = serde_json::to_string(&new_user)?;
+
+    let mut res = Response::new(StatusCode::Ok);
+    res.set_body(json);
+    Ok(res)
+}
+
+async fn insert_new_user(pool: &PgPool, user_data: ValidUserData) -> Result<User, sqlx::Error> {
+    let ValidUserData(RawUserData {
+        username,
+        password: hashed_password,
+    }) = user_data;
+
+    let id = Uuid::new_v4();
     let date = Utc::now();
 
-    let user = sqlx::query_as!(
+    sqlx::query_as!(
         User,
         r#"
         INSERT INTO users (
@@ -75,10 +91,5 @@ pub async fn new_user(mut req: Request<State>) -> tide::Result {
         date,
     )
     .fetch_one(pool)
-    .await?;
-
-    let body = serde_json::to_string(&user)?;
-    let mut res = Response::new(StatusCode::Ok);
-    res.set_body(body);
-    Ok(res)
+    .await
 }

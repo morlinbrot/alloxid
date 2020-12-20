@@ -39,9 +39,21 @@ impl Todo {
     }
 }
 
-#[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
-struct CreateUser {
+#[derive(Debug, Deserialize, Serialize)]
+struct RawUserData {
     username: String,
+    password: String,
+}
+
+struct ValidUserData(RawUserData);
+
+impl ValidUserData {
+    pub fn parse(create_user: RawUserData) -> Result<Self, String> {
+        // TODO: Add some validation logic.
+        let RawUserData { username, password } = create_user;
+
+        Ok(Self(RawUserData { username, password }))
+    }
 }
 
 #[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
@@ -92,7 +104,7 @@ async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::
     app.at("/api/all").get(get_all);
     app.at("/api/todo").post(new_todo);
     app.at("/api/todo/:id").get(get_todo);
-    app.at("/user").post(new_user);
+    app.at("/user").post(create_user);
 
     Ok(app)
 }

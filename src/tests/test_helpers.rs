@@ -53,13 +53,13 @@ impl TestDb {
     }
 }
 
-//impl Drop for TestDb {
-//    fn drop(&mut self) {
-//        futures::executor::block_on(self.pool.close());
-//        //let _ = self.pool;
-//        futures::executor::block_on(drop_db(&self.pg_conn, &self.db_name));
-//    }
-//}
+impl Drop for TestDb {
+    fn drop(&mut self) {
+        async_std::task::block_on(self.pool.close());
+        let _ = self.pool;
+        async_std::task::block_on(drop_db(&self.pg_conn, &self.db_name));
+    }
+}
 
 async fn create_db(pg_conn: &str, db_name: &str) {
     let mut conn = PgConnection::connect(pg_conn)
@@ -85,17 +85,17 @@ async fn drop_db(pg_conn: &str, db_name: &str) {
         .expect("Failed to connect to Postgres.");
 
     // Disconnect any existing connections to the DB
-    conn.execute(&*format!(
-        r#"
-        SELECT pg_terminate_backend(pg_stat_activity.pid)
-        FROM pg_stat_activity
-        WHERE pg_stat_activity.datname = '{}'
-        AND pid <> pg_backend_pid();
-        "#,
-        db_name
-    ))
-    .await
-    .expect("Failed to drop existing connections to database.");
+    // conn.execute(&*format!(
+    //     r#"
+    //     SELECT pg_terminate_backend(pg_stat_activity.pid)
+    //     FROM pg_stat_activity
+    //     WHERE pg_stat_activity.datname = '{}'
+    //     AND pid <> pg_backend_pid();
+    //     "#,
+    //     db_name
+    // ))
+    // .await
+    // .expect("Failed to drop existing connections to database.");
 
     conn.execute(&*format!(r#"DROP DATABASE "{}";"#, db_name))
         .await
