@@ -13,7 +13,7 @@ mod settings;
 use settings::Settings;
 
 mod endpoints;
-//use endpoints::todo;
+use endpoints::todo;
 use endpoints::user;
 
 #[cfg(test)]
@@ -120,9 +120,9 @@ async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::
     app.at("/").serve_dir("dist/")?;
     app.at("/health-check")
         .get(|_req: Request<State>| async move { Ok(Response::new(StatusCode::Ok)) });
-    // app.at("/todo").post(todo::create_todo);
-    // app.at("/todo/all").get(todo::get_all);
-    // app.at("/todo/:id").get(todo::get_todo);
+    app.at("/todo").post(todo::create_todo);
+    app.at("/todo/all").get(todo::get_all);
+    app.at("/todo/:id").get(todo::get_todo);
     app.at("/user").post(user::create_user);
 
     Ok(app)
