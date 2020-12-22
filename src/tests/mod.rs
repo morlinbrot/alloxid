@@ -1,8 +1,8 @@
 mod test_helpers;
 use test_helpers::{spawn_test_app, TestDb};
 
-mod create_user;
 mod todo;
+mod user;
 
 #[async_std::test]
 async fn health_check() {
