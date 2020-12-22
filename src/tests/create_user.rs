@@ -1,4 +1,4 @@
-use crate::tests::test_helpers::{spawn_test_app, TestDb};
+use super::test_helpers::{spawn_test_app, TestDb};
 
 use crate::User;
 
@@ -17,11 +17,10 @@ async fn create_user() {
         .await
         .expect(&format!("Failed to execute POST request at {}", &route));
     dbg!(&res);
+    assert_eq!(res.status(), 200);
 
     let user: User = res.body_json().await.unwrap();
     dbg!(&user);
-
-    assert_eq!(res.status(), 200);
     assert!(!user.id.is_nil());
     assert_eq!(user.username, username);
 }

@@ -13,13 +13,31 @@ mod settings;
 use settings::Settings;
 
 mod endpoints;
-use endpoints::*;
+//use endpoints::todo;
+use endpoints::user;
 
 #[cfg(test)]
 mod tests;
 
 // mod log_middleware;
 //use log_middleware::logger;
+
+#[derive(Debug, Deserialize, Serialize)]
+struct RawTodo {
+    text: String,
+    completed: bool,
+}
+
+struct ValidRawTodo(RawTodo);
+
+impl ValidRawTodo {
+    // TODO: Errors.
+    pub fn parse(raw: RawTodo) -> Result<Self, String> {
+        let RawTodo { text, completed } = raw;
+        // TODO: Add some validation logic.
+        Ok(Self(RawTodo { text, completed }))
+    }
+}
 
 #[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
 struct Todo {
@@ -48,6 +66,7 @@ struct RawUserData {
 struct ValidUserData(RawUserData);
 
 impl ValidUserData {
+    // TODO: Errors.
     pub fn parse(create_user: RawUserData) -> Result<Self, String> {
         // TODO: Add some validation logic.
         let RawUserData { username, password } = create_user;
@@ -97,14 +116,14 @@ async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::
     //GET   /todo/:id - get a single todo
     //        "
     //    ))
-    //});
+    //})
     app.at("/").serve_dir("dist/")?;
     app.at("/health-check")
         .get(|_req: Request<State>| async move { Ok(Response::new(StatusCode::Ok)) });
-    app.at("/api/all").get(get_all);
-    app.at("/api/todo").post(new_todo);
-    app.at("/api/todo/:id").get(get_todo);
-    app.at("/user").post(create_user);
+    // app.at("/todo").post(todo::create_todo);
+    // app.at("/todo/all").get(todo::get_all);
+    // app.at("/todo/:id").get(todo::get_todo);
+    app.at("/user").post(user::create_user);
 
     Ok(app)
 }
