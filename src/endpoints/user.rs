@@ -1,7 +1,9 @@
+use argonautica::{Hasher, Verifier};
 use chrono::prelude::*;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use sqlx::PgPool;
+use std::env;
 use tide::{http::StatusCode, Request, Response};
 use uuid::Uuid;
 
@@ -25,13 +27,18 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
 }
 
 async fn insert_new_user(pool: &PgPool, user_data: ValidUserData) -> Result<User, sqlx::Error> {
-    let ValidUserData(RawUserData {
-        username,
-        password: hashed_password,
-    }) = user_data;
-
     let id = Uuid::new_v4();
     let date = Utc::now();
+
+    let ValidUserData(RawUserData { username, password }) = user_data;
+
+    let secret = env::var("SECRET").expect("Failed to read env var.");
+    let mut hasher = Hasher::default();
+    let hash = hasher
+        .with_password(&password)
+        .with_secret_key(secret)
+        .hash()
+        .expect("Failed to hash password.");
 
     sqlx::query_as!(
         User,
@@ -47,7 +54,7 @@ async fn insert_new_user(pool: &PgPool, user_data: ValidUserData) -> Result<User
         "#,
         id,
         username,
-        hashed_password,
+        hash,
         date,
         date,
     )
@@ -76,4 +83,53 @@ async fn insert_auth_token(pool: &PgPool, user_id: &Uuid) -> Result<String, sqlx
     .await?;
 
     Ok(record.token)
+}
+
+pub async fn login(mut req: Request<State>) -> tide::Result {
+    let pool = &req.state().db_pool.clone();
+
+    let RawUserData { username, password } = req.body_json().await?;
+
+    let row = sqlx::query!(
+        r#"
+        select id as user_id, hashed_password from users
+        where username = $1
+        "#,
+        username,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    let is_valid = verify_password(&row.hashed_password, &password);
+
+    if !is_valid {
+        let res = Response::new(StatusCode::Unauthorized);
+        return Ok(res);
+    }
+
+    let row = sqlx::query!(
+        r#"
+        select token from auth_tokens
+        where user_id = $1
+        "#,
+        row.user_id,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    let token = serde_json::to_string(&row.token)?;
+    let mut res = Response::new(StatusCode::Ok);
+    res.set_body(token);
+    Ok(res)
+}
+
+fn verify_password(hash: &str, password: &str) -> bool {
+    let secret = env::var("SECRET").expect("Failed to read env var.");
+    let mut verifier = Verifier::default();
+    verifier
+        .with_hash(&hash)
+        .with_password(password)
+        .with_secret_key(secret)
+        .verify()
+        .expect("Failed to verify hash.")
 }

@@ -124,6 +124,7 @@ async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::
     app.at("/todo/all").get(todo::get_all);
     app.at("/todo/:id").get(todo::get_todo);
     app.at("/user").post(user::create_user);
+    app.at("/user/login").post(user::login);
 
     Ok(app)
 }
