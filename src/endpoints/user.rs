@@ -3,7 +3,6 @@ use chrono::prelude::*;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use sqlx::PgPool;
-use std::env;
 use tide::{http::StatusCode, Request, Response};
 use uuid::Uuid;
 
@@ -12,11 +11,12 @@ use crate::{RawUserData, State, User, ValidUserData};
 pub async fn create_user(mut req: Request<State>) -> tide::Result {
     // Only cloning an Arc here so no real costs involved.
     let pool = &req.state().db_pool.clone();
+    let secret = &req.state().settings.clone().app.secret;
 
     let raw: RawUserData = req.body_json().await?;
     let valid_user_data = ValidUserData::parse(raw).expect("Failed to parse valid user.");
 
-    let new_user = insert_new_user(pool, valid_user_data).await?;
+    let new_user = insert_new_user(pool, valid_user_data, secret).await?;
     let json = serde_json::to_string(&new_user)?;
 
     let _token = insert_auth_token(pool, &new_user.id).await?;
@@ -26,13 +26,16 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
     Ok(res)
 }
 
-async fn insert_new_user(pool: &PgPool, user_data: ValidUserData) -> Result<User, sqlx::Error> {
+async fn insert_new_user(
+    pool: &PgPool,
+    user_data: ValidUserData,
+    secret: &str,
+) -> Result<User, sqlx::Error> {
     let id = Uuid::new_v4();
     let date = Utc::now();
 
     let ValidUserData(RawUserData { username, password }) = user_data;
 
-    let secret = env::var("SECRET").expect("Failed to read env var.");
     let mut hasher = Hasher::default();
     let hash = hasher
         .with_password(&password)
@@ -87,6 +90,7 @@ async fn insert_auth_token(pool: &PgPool, user_id: &Uuid) -> Result<String, sqlx
 
 pub async fn login(mut req: Request<State>) -> tide::Result {
     let pool = &req.state().db_pool.clone();
+    let secret = &req.state().settings.clone().app.secret;
 
     let RawUserData { username, password } = req.body_json().await?;
 
@@ -100,7 +104,7 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
     .fetch_one(pool)
     .await?;
 
-    let is_valid = verify_password(&row.hashed_password, &password);
+    let is_valid = verify_password(&row.hashed_password, &password, secret);
 
     if !is_valid {
         let res = Response::new(StatusCode::Unauthorized);
@@ -123,8 +127,7 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
     Ok(res)
 }
 
-fn verify_password(hash: &str, password: &str) -> bool {
-    let secret = env::var("SECRET").expect("Failed to read env var.");
+fn verify_password(hash: &str, password: &str, secret: &str) -> bool {
     let mut verifier = Verifier::default();
     verifier
         .with_hash(&hash)

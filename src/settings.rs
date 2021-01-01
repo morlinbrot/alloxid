@@ -1,19 +1,21 @@
-use config::{Config, ConfigError, Environment, File};
+use config::{Config, ConfigError, File};
+use dotenv;
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Settings {
     pub app: App,
     pub database: Database,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct App {
     pub host: String,
     pub port: usize,
+    pub secret: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Database {
     pub host: String,
     pub name: String,
@@ -31,9 +33,13 @@ impl Settings {
         #[cfg(test)]
         config.merge(File::with_name("config/test"))?;
 
-        // Add in settings from the environment (with a prefix of APP)
-        // Eg.. `APP_DEBUG=1 ./target/app` would set the `debug` key
-        config.merge(Environment::with_prefix("app"))?;
+        // Load .env file into environment, if present.
+        dotenv::dotenv().expect("Failed to load .env file");
+
+        // Set the app secret from environment. (Unfortunalely `config` doesn't support
+        // setting vars into nested parts of the config, e.g. `Settings.app`.
+        let secret = std::env::var("APP_SECRET").expect("APP_SECRET must be set.");
+        config.set("app.secret", secret)?;
 
         config.try_into()
     }

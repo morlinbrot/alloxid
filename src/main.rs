@@ -87,10 +87,14 @@ struct User {
 #[derive(Clone, Debug)]
 pub struct State {
     db_pool: PgPool,
+    settings: Settings,
 }
 
-async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::Error> {
-    let state = State { db_pool };
+async fn configure_app(
+    db_pool: PgPool,
+    settings: Settings,
+) -> Result<tide::Server<State>, std::io::Error> {
+    let state = State { db_pool, settings };
 
     let mut app = tide::with_state(state);
 
@@ -132,14 +136,14 @@ async fn configure_app(db_pool: PgPool) -> Result<tide::Server<State>, std::io::
 #[async_std::main]
 async fn main() -> Result<(), sqlx::Error> {
     //tide::log::start();
-    let Settings { app, database } = Settings::new().expect("Failed to load configuration.");
-    let address = format!("{}:{}", app.host, app.port);
+    let settings = Settings::new().expect("Failed to load configuration.");
+    let address = format!("{}:{}", settings.app.host, settings.app.port);
 
-    let db_pool = PgPool::connect(&database.url())
+    let db_pool = PgPool::connect(&settings.database.url())
         .await
         .expect("Failed to create db pool.");
 
-    let app = configure_app(db_pool)
+    let app = configure_app(db_pool, settings)
         .await
         .expect("Failed to configure app.");
 

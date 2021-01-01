@@ -15,11 +15,11 @@ pub struct TestDb {
 }
 
 pub async fn spawn_test_app(db_pool: PgPool) -> TestApp {
-    let Settings { app, .. } = Settings::new().expect("Failed to load configuration.");
+    let settings = Settings::new().expect("Failed to load configuration.");
 
-    let address = format!("http://{}:{}", app.host, app.port);
+    let address = format!("http://{}:{}", settings.app.host, settings.app.port);
 
-    let app = configure_app(db_pool).await.unwrap();
+    let app = configure_app(db_pool, settings).await.unwrap();
 
     let _ = async_std::task::spawn(app.listen(address.clone()));
     TestApp { address }
