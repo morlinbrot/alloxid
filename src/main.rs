@@ -57,6 +57,15 @@ impl Todo {
     }
 }
 
+pub type Token = String;
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UserCreationData {
+    id: Uuid,
+    username: String,
+    token: Token,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct RawUserData {
     username: String,
