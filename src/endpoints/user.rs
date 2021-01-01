@@ -1,4 +1,5 @@
 use argonautica::{Hasher, Verifier};
+use async_std::task;
 use chrono::prelude::*;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
@@ -33,15 +34,20 @@ async fn insert_new_user(
 ) -> Result<User, sqlx::Error> {
     let id = Uuid::new_v4();
     let date = Utc::now();
+    let secret = secret.to_string();
 
     let ValidUserData(RawUserData { username, password }) = user_data;
 
-    let mut hasher = Hasher::default();
-    let hash = hasher
-        .with_password(&password)
-        .with_secret_key(secret)
-        .hash()
-        .expect("Failed to hash password.");
+    // Since the hashing takes noticeable time, we're offloading it onto a dedicated thread pool for blocking tasks.
+    let hash = task::spawn_blocking(move || {
+        let mut hasher = Hasher::default();
+        hasher
+            .with_password(&password)
+            .with_secret_key(secret)
+            .hash()
+            .expect("Failed to hash password.")
+    })
+    .await;
 
     sqlx::query_as!(
         User,
