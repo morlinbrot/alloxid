@@ -23,6 +23,17 @@ mod tests;
 pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Deserialize, Serialize)]
+struct JsonBody<T> {
+    data: T,
+}
+
+impl<T> JsonBody<T> {
+    pub fn new(data: T) -> Self {
+        Self { data }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct RawTodo {
     text: String,
     completed: bool,

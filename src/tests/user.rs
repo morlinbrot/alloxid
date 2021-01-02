@@ -1,6 +1,6 @@
 use super::test_helpers::{spawn_test_app, TestDb};
 
-use crate::UserCreationData;
+use crate::{JsonBody, UserCreationData};
 
 #[async_std::test]
 async fn create_user_and_login() {
@@ -20,7 +20,8 @@ async fn create_user_and_login() {
     dbg!(&res);
     assert_eq!(res.status(), 200);
 
-    let user: UserCreationData = res.body_json().await.unwrap();
+    let body: JsonBody<UserCreationData> = res.body_json().await.unwrap();
+    let user = body.data;
     dbg!(&user);
     assert!(!user.id.is_nil());
     assert!(!user.token.is_empty());
@@ -36,7 +37,8 @@ async fn create_user_and_login() {
     dbg!(&res);
     assert_eq!(res.status(), 200);
 
-    let token: String = res.body_json().await.unwrap();
+    let body: JsonBody<String> = res.body_json().await.unwrap();
+    let token = body.data;
     dbg!(&token);
     assert!(!token.is_empty());
 

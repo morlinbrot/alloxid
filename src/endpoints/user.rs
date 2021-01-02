@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use tide::{http::StatusCode, Request, Response};
 use uuid::Uuid;
 
-use crate::{RawUserData, State, User, UserCreationData, ValidUserData};
+use crate::{JsonBody, RawUserData, State, User, UserCreationData, ValidUserData};
 
 pub async fn create_user(mut req: Request<State>) -> tide::Result {
     // Only cloning an Arc here so no real costs involved.
@@ -26,7 +26,7 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
         token,
     };
 
-    let json = serde_json::to_string(&user_data)?;
+    let json = serde_json::to_string(&JsonBody::new(user_data))?;
 
     let mut res = Response::new(StatusCode::Ok);
     res.set_body(json);
@@ -133,9 +133,9 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
     .fetch_one(pool)
     .await?;
 
-    let token = serde_json::to_string(&row.token)?;
+    let json = serde_json::to_string(&JsonBody::new(row.token))?;
     let mut res = Response::new(StatusCode::Ok);
-    res.set_body(token);
+    res.set_body(json);
     Ok(res)
 }
 
