@@ -1,13 +1,14 @@
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
-use uuid::Uuid;
-//use std::future::Future;
-//use std::pin::Pin;
 use tide::http::headers::HeaderValue;
 use tide::http::StatusCode;
 use tide::security::{CorsMiddleware, Origin};
 use tide::{Request, Response};
+use uuid::Uuid;
+
+mod error;
+pub use error::*;
 
 mod settings;
 use settings::Settings;
@@ -19,8 +20,7 @@ use endpoints::user;
 #[cfg(test)]
 mod tests;
 
-// mod log_middleware;
-//use log_middleware::logger;
+pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct RawTodo {
@@ -31,8 +31,7 @@ struct RawTodo {
 struct ValidRawTodo(RawTodo);
 
 impl ValidRawTodo {
-    // TODO: Errors.
-    pub fn parse(raw: RawTodo) -> Result<Self, String> {
+    pub fn parse(raw: RawTodo) -> Result<Self> {
         let RawTodo { text, completed } = raw;
         // TODO: Add some validation logic.
         Ok(Self(RawTodo { text, completed }))
@@ -75,8 +74,7 @@ struct RawUserData {
 struct ValidUserData(RawUserData);
 
 impl ValidUserData {
-    // TODO: Errors.
-    pub fn parse(create_user: RawUserData) -> Result<Self, String> {
+    pub fn parse(create_user: RawUserData) -> Result<Self> {
         // TODO: Add some validation logic.
         let RawUserData { username, password } = create_user;
 
@@ -99,10 +97,7 @@ pub struct State {
     settings: Settings,
 }
 
-async fn configure_app(
-    db_pool: PgPool,
-    settings: Settings,
-) -> Result<tide::Server<State>, std::io::Error> {
+async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<tide::Server<State>> {
     let state = State { db_pool, settings };
 
     let mut app = tide::with_state(state);
@@ -120,16 +115,6 @@ async fn configure_app(
     }
     pretty_env_logger::try_init().ok();
 
-    //app.at("/").get(|_| async {
-    //    Ok(format!(
-    //        "
-    //Try one of these routes:\n
-    //GET   /all      - get all todos
-    //POST  /todo     - create a new todo
-    //GET   /todo/:id - get a single todo
-    //        "
-    //    ))
-    //})
     app.at("/").serve_dir("dist/")?;
     app.at("/health-check")
         .get(|_req: Request<State>| async move { Ok(Response::new(StatusCode::Ok)) });
@@ -143,18 +128,14 @@ async fn configure_app(
 }
 
 #[async_std::main]
-async fn main() -> Result<(), sqlx::Error> {
+async fn main() -> Result<()> {
     //tide::log::start();
-    let settings = Settings::new().expect("Failed to load configuration.");
+    let settings = Settings::new()?;
     let address = format!("{}:{}", settings.app.host, settings.app.port);
 
-    let db_pool = PgPool::connect(&settings.database.url())
-        .await
-        .expect("Failed to create db pool.");
+    let db_pool = PgPool::connect(&settings.database.url()).await?;
 
-    let app = configure_app(db_pool, settings)
-        .await
-        .expect("Failed to configure app.");
+    let app = configure_app(db_pool, settings).await?;
 
     println!("Server listening on {}", address);
     app.listen(address).await?;

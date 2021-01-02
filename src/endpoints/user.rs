@@ -15,7 +15,7 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
     let secret = &req.state().settings.clone().app.secret;
 
     let raw: RawUserData = req.body_json().await?;
-    let valid_user_data = ValidUserData::parse(raw).expect("Failed to parse valid user.");
+    let valid_user_data = ValidUserData::parse(raw)?;
 
     let user = insert_new_user(pool, valid_user_data, secret).await?;
     let token = insert_auth_token(pool, &user.id).await?;
@@ -116,7 +116,7 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
     .fetch_one(pool)
     .await?;
 
-    let is_valid = verify_password(&row.hashed_password, &password, secret);
+    let is_valid = verify_password(&row.hashed_password, &password, secret)?;
 
     if !is_valid {
         let res = Response::new(StatusCode::Unauthorized);
@@ -139,12 +139,12 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
     Ok(res)
 }
 
-fn verify_password(hash: &str, password: &str, secret: &str) -> bool {
+fn verify_password(hash: &str, password: &str, secret: &str) -> crate::Result<bool> {
     let mut verifier = Verifier::default();
-    verifier
+    Ok(verifier
         .with_hash(&hash)
         .with_password(password)
         .with_secret_key(secret)
         .verify()
-        .expect("Failed to verify hash.")
+        .map_err(|err| crate::Error::from(err))?)
 }
