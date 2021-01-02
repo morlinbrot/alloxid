@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use tide::{http::StatusCode, Request, Response};
 use uuid::Uuid;
 
-use crate::{JsonBody, RawUserData, State, User, UserCreationData, ValidUserData};
+use crate::{JsonBody, RawUserData, State, User, UserData, ValidUserData};
 
 pub async fn create_user(mut req: Request<State>) -> tide::Result {
     // Only cloning an Arc here so no real costs involved.
@@ -20,15 +20,9 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
     let user = insert_new_user(pool, valid_user_data, secret).await?;
     let token = insert_auth_token(pool, &user.id).await?;
 
-    let user_data = UserCreationData {
-        id: user.id,
-        username: user.username,
-        token,
-    };
+    let json = serde_json::to_string(&JsonBody::new(token))?;
 
-    let json = serde_json::to_string(&JsonBody::new(user_data))?;
-
-    let mut res = Response::new(StatusCode::Ok);
+    let mut res = Response::new(StatusCode::Created);
     res.set_body(json);
     Ok(res)
 }
@@ -44,7 +38,7 @@ async fn insert_new_user(
 
     let ValidUserData(RawUserData { username, password }) = user_data;
 
-    // Since the hashing takes noticeable time, we're offloading it onto a dedicated thread pool for blocking tasks.
+    // Since the hashing actually takes some time, we're offloading it onto a dedicated thread pool for blocking tasks.
     let hash = task::spawn_blocking(move || {
         let mut hasher = Hasher::default();
         hasher
@@ -147,4 +141,50 @@ fn verify_password(hash: &str, password: &str, secret: &str) -> crate::Result<bo
         .with_secret_key(secret)
         .verify()
         .map_err(|err| crate::Error::from(err))?)
+}
+
+pub async fn me(req: Request<State>) -> tide::Result {
+    // TODO: Create middleware to do this.
+    let token = match req.header("Authentication") {
+        Some(token) => token.as_str().to_string(),
+        None => {
+            return Ok(Response::new(StatusCode::Unauthorized));
+        }
+    };
+
+    let pool = &req.state().db_pool.clone();
+
+    let user = sqlx::query_as!(
+        User,
+        r#"
+        select u.* from users u
+        join auth_tokens a on u.id = a.user_id
+        where a.token = $1
+        "#,
+        token,
+    )
+    .fetch_one(pool)
+    .await;
+
+    // If we don't find user data, we must have received a token but we don't know it.
+    let user_data = match user {
+        Ok(user) => UserData {
+            id: user.id,
+            username: user.username,
+        },
+        Err(err) => match err {
+            sqlx::Error::RowNotFound => {
+                return Ok(Response::new(StatusCode::Forbidden));
+            }
+            _ => {
+                return Ok(Response::new(StatusCode::InternalServerError));
+            }
+        },
+    };
+
+    let json = serde_json::to_string(&JsonBody::new(user_data))?;
+
+    let mut res = Response::new(StatusCode::Ok);
+    res.set_body(json);
+    Ok(res)
 }
