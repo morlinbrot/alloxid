@@ -58,14 +58,14 @@ async fn insert_new_user(
     sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (
-            id,
-            username,
-            hashed_password,
-            created_at,
-            updated_at
-        ) VALUES ( $1, $2, $3, $4, $5)
-        RETURNING *
+            INSERT INTO users (
+                id,
+                username,
+                hashed_password,
+                created_at,
+                updated_at
+            ) VALUES ( $1, $2, $3, $4, $5)
+            RETURNING *
         "#,
         id,
         username,
@@ -87,8 +87,8 @@ async fn insert_auth_token(pool: &PgPool, user_id: &Uuid) -> Result<String, sqlx
 
     let record = sqlx::query!(
         r#"
-        INSERT INTO auth_tokens ( id, user_id, token) VALUES ( $1, $2, $3)
-        RETURNING token
+            INSERT INTO auth_tokens ( id, user_id, token) VALUES ( $1, $2, $3)
+            RETURNING token
         "#,
         id,
         user_id,
@@ -108,8 +108,8 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
 
     let row = sqlx::query!(
         r#"
-        select id as user_id, hashed_password from users
-        where username = $1
+            select id as user_id, hashed_password from users
+            where username = $1
         "#,
         username,
     )
@@ -137,8 +137,8 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
 
     let row = sqlx::query!(
         r#"
-        select token from auth_tokens
-        where user_id = $1
+            select token from auth_tokens
+            where user_id = $1
         "#,
         user_id,
     )
@@ -162,25 +162,22 @@ fn verify_password(hash: &str, password: &str, secret: &str) -> crate::Result<bo
 }
 
 pub async fn get_user(req: Request<State>) -> tide::Result {
-    // TODO: Create middleware to do this.
-    let token = match req.header("Authentication") {
-        Some(token) => token.as_str().to_string(),
-        None => {
-            return Ok(Response::new(StatusCode::Unauthorized));
-        }
-    };
-
     // TODO: In middleware, check if token ok && id == token.user_id
     let user_id = Uuid::parse_str(req.param("id")?)?;
+    // TODO: Create middleware to do this.
+    let token = match req.header("Authorization") {
+        Some(token) => token.as_str().to_string(),
+        None => return Ok(Response::new(StatusCode::Unauthorized)),
+    };
 
     let pool = &req.state().db_pool.clone();
 
     let user = sqlx::query_as!(
         User,
         r#"
-        select u.* from users u
-        join auth_tokens a on a.user_id = u.id
-        where a.token = $1
+            select u.* from users u
+            join auth_tokens a on a.user_id = u.id
+            where a.token = $1
         "#,
         token,
     )
@@ -210,16 +207,14 @@ pub async fn get_user(req: Request<State>) -> tide::Result {
 }
 
 pub async fn update_user(mut req: Request<State>) -> tide::Result {
+    // TODO: In middleware, check if token ok && id == token.user_id
+    let pool = &req.state().db_pool.clone();
     // TODO: Create middleware to do this.
-    let _token = match req.header("Authentication") {
+    let _token = match req.header("Authorization") {
         Some(token) => token.as_str().to_string(),
-        None => {
-            return Ok(Response::new(StatusCode::Unauthorized));
-        }
+        None => return Ok(Response::new(StatusCode::Unauthorized)),
     };
 
-    let pool = &req.state().db_pool.clone();
-    // TODO: In middleware, check if token ok && id == token.user_id
     let user_id = Uuid::parse_str(req.param("id")?)?;
 
     let mut patch: serde_json::Value = req.body_json().await?;
@@ -233,7 +228,7 @@ pub async fn update_user(mut req: Request<State>) -> tide::Result {
             set username = $2
             where id = $1
             returning id, username
-            "#,
+        "#,
         user_id,
         username,
     )
@@ -243,4 +238,26 @@ pub async fn update_user(mut req: Request<State>) -> tide::Result {
     Ok(Response::builder(200)
         .body(serde_json::to_string(&JsonBody::new(updated_user))?)
         .build())
+}
+
+pub async fn delete_user(req: Request<State>) -> tide::Result {
+    // TODO: In middleware, check if token ok && id == token.user_id
+    let user_id = Uuid::parse_str(req.param("id")?)?;
+    // TODO: Create middleware to do this.
+    let _token = match req.header("Authorization") {
+        Some(token) => token.as_str().to_string(),
+        None => return Ok(Response::new(StatusCode::Unauthorized)),
+    };
+
+    let pool = &req.state().db_pool.clone();
+
+    sqlx::query!(r#" delete from auth_tokens where user_id = $1; "#, user_id)
+        .execute(pool)
+        .await?;
+
+    sqlx::query!(r#" delete from users where id = $1; "#, user_id)
+        .execute(pool)
+        .await?;
+
+    Ok(Response::builder(200).build())
 }

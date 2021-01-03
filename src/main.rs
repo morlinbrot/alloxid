@@ -102,6 +102,7 @@ async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<tide::Serv
     app.at("/user").post(user::create_user);
     app.at("/user/:id").get(user::get_user);
     app.at("/user/:id").put(user::update_user);
+    app.at("/user/:id").delete(user::delete_user);
     app.at("/user/login").post(user::login);
 
     Ok(app)

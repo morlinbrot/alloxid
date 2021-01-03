@@ -63,7 +63,7 @@ async fn create_user_and_login() {
 
     // Get user data with authentication header.
     let mut res = surf::get(format!("{}{}", app.address, &route))
-        .header("Authentication", format!("{}", token))
+        .header("Authorization", format!("{}", token))
         .await
         .expect(&format!("Failed to execute GET request at {}", &route));
     dbg!(&res);
@@ -133,7 +133,7 @@ async fn get_user_with_illegal_token_returns_403() {
     let route = format!("/user/{}", user.id);
 
     let res = surf::get(format!("{}{}", app.address, &route))
-        .header("Authentication", format!("{}", "thisisnotatoken"))
+        .header("Authorization", format!("{}", "thisisnotatoken"))
         .await
         .expect(&format!("Failed to execute GET request at {}", &route));
     dbg!(&res);
@@ -156,7 +156,7 @@ async fn put_user_data_returns_200() {
     let json = serde_json::json!({ "username": new_username });
 
     let mut res = surf::put(format!("{}{}", app.address, &route))
-        .header("Authentication", format!("{}", token))
+        .header("Authorization", format!("{}", token))
         .body(http_types::Body::from_json(&json).unwrap())
         .await
         .expect(&format!("Failed to execute PUT request at {}", &route));
@@ -169,6 +169,30 @@ async fn put_user_data_returns_200() {
     assert_eq!(user.username, new_username);
 }
 
-fn _user_already_taken() {
-    todo!()
+#[async_std::test]
+async fn delete_user_returns_200_then_403() {
+    let test_db = TestDb::new().await;
+    let app = spawn_test_app(test_db.pool()).await;
+
+    let (mut res, _) = create_user(&app).await;
+    let body: JsonBody<UserCreationData> = res.body_json().await.unwrap();
+    let user = body.data;
+    let token = user.token;
+
+    let route = format!("/user/{}", user.id);
+
+    let res = surf::delete(format!("{}{}", app.address, &route))
+        .header("Authorization", format!("{}", token))
+        .await
+        .expect(&format!("Failed to execute DELETE request at {}", &route));
+    dbg!(&res);
+    assert_eq!(res.status(), 200);
+
+    // Trying to retrieve the user after deletion should return 403.
+    let res = surf::get(format!("{}{}", app.address, &route))
+        .header("Authorization", format!("{}", token))
+        .await
+        .expect(&format!("Failed to execute GET request at {}", &route));
+    dbg!(&res);
+    assert_eq!(res.status(), 403);
 }
