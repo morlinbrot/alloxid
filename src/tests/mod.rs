@@ -1,7 +1,6 @@
 mod test_helpers;
 use test_helpers::{spawn_test_app, TestDb};
 
-mod todo;
 mod user;
 
 #[async_std::test]

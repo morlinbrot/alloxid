@@ -14,7 +14,6 @@ mod settings;
 use settings::Settings;
 
 mod endpoints;
-use endpoints::todo;
 use endpoints::user;
 
 #[cfg(test)]
@@ -30,40 +29,6 @@ struct JsonBody<T> {
 impl<T> JsonBody<T> {
     pub fn new(data: T) -> Self {
         Self { data }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct RawTodo {
-    text: String,
-    completed: bool,
-}
-
-struct ValidRawTodo(RawTodo);
-
-impl ValidRawTodo {
-    pub fn parse(raw: RawTodo) -> Result<Self> {
-        let RawTodo { text, completed } = raw;
-        // TODO: Add some validation logic.
-        Ok(Self(RawTodo { text, completed }))
-    }
-}
-
-#[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
-struct Todo {
-    id: i32,
-    text: String,
-    completed: bool,
-}
-
-#[allow(dead_code)]
-impl Todo {
-    pub(crate) fn new(id: i32, text: String) -> Self {
-        Self {
-            id,
-            text,
-            completed: false,
-        }
     }
 }
 
@@ -134,9 +99,6 @@ async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<tide::Serv
     app.at("/").serve_dir("dist/")?;
     app.at("/health-check")
         .get(|_req: Request<State>| async move { Ok(Response::new(StatusCode::Ok)) });
-    app.at("/todo").post(todo::create_todo);
-    app.at("/todo/all").get(todo::get_all);
-    app.at("/todo/:id").get(todo::get_todo);
     app.at("/user").post(user::create_user);
     app.at("/user/:id").get(user::get_user);
     app.at("/user/login").post(user::login);
