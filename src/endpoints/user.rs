@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use tide::{http::StatusCode, Request, Response};
 use uuid::Uuid;
 
-use crate::{JsonBody, RawUserData, State, User, UserData, ValidUserData};
+use crate::{JsonBody, RawUserData, State, User, UserCreationData, UserData, ValidUserData};
 
 pub async fn create_user(mut req: Request<State>) -> tide::Result {
     // Only cloning an Arc here so no real costs involved.
@@ -19,8 +19,9 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
 
     let user = insert_new_user(pool, valid_user_data, secret).await?;
     let token = insert_auth_token(pool, &user.id).await?;
+    let data = UserCreationData { token, id: user.id };
 
-    let json = serde_json::to_string(&JsonBody::new(token))?;
+    let json = serde_json::to_string(&JsonBody::new(data))?;
 
     let mut res = Response::new(StatusCode::Created);
     res.set_body(json);
@@ -155,7 +156,7 @@ fn verify_password(hash: &str, password: &str, secret: &str) -> crate::Result<bo
         .map_err(|err| crate::Error::from(err))?)
 }
 
-pub async fn me(req: Request<State>) -> tide::Result {
+pub async fn get_user(req: Request<State>) -> tide::Result {
     // TODO: Create middleware to do this.
     let token = match req.header("Authentication") {
         Some(token) => token.as_str().to_string(),
@@ -164,13 +165,16 @@ pub async fn me(req: Request<State>) -> tide::Result {
         }
     };
 
+    // TODO: In middleware, check if token ok && id == token.user_id
+    let user_id: Uuid = req.param("id")?;
+
     let pool = &req.state().db_pool.clone();
 
     let user = sqlx::query_as!(
         User,
         r#"
         select u.* from users u
-        join auth_tokens a on u.id = a.user_id
+        join auth_tokens a on a.user_id = u.id
         where a.token = $1
         "#,
         token,
@@ -178,19 +182,18 @@ pub async fn me(req: Request<State>) -> tide::Result {
     .fetch_one(pool)
     .await;
 
-    // If we don't find user data, we must have received a token but we don't know it.
     let user_data = match user {
+        Err(err) => match err {
+            // Requested user doesn't exist, e.g. token must be illegal.
+            sqlx::Error::RowNotFound => return Ok(Response::new(StatusCode::Forbidden)),
+            // Any othe sqlx error.
+            _ => return Ok(Response::new(StatusCode::InternalServerError)),
+        },
+        // We found a user matching the token but requested id doesn't match, e.g. illegal token.
+        Ok(user) if user.id != user_id => return Ok(Response::new(StatusCode::Forbidden)),
         Ok(user) => UserData {
             id: user.id,
             username: user.username,
-        },
-        Err(err) => match err {
-            sqlx::Error::RowNotFound => {
-                return Ok(Response::new(StatusCode::Forbidden));
-            }
-            _ => {
-                return Ok(Response::new(StatusCode::InternalServerError));
-            }
         },
     };
 

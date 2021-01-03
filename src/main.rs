@@ -70,12 +70,6 @@ impl Todo {
 pub type Token = String;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct UserData {
-    id: Uuid,
-    username: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 struct RawUserData {
     username: String,
     password: String,
@@ -99,6 +93,18 @@ struct User {
     hashed_password: String,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UserData {
+    id: Uuid,
+    username: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UserCreationData {
+    id: Uuid,
+    token: String,
 }
 
 #[derive(Clone, Debug)]
@@ -132,8 +138,8 @@ async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<tide::Serv
     app.at("/todo/all").get(todo::get_all);
     app.at("/todo/:id").get(todo::get_todo);
     app.at("/user").post(user::create_user);
+    app.at("/user/:id").get(user::get_user);
     app.at("/user/login").post(user::login);
-    app.at("/user/me").get(user::me);
 
     Ok(app)
 }

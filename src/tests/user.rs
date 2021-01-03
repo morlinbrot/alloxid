@@ -1,7 +1,7 @@
 use super::test_helpers::{spawn_test_app, TestApp, TestDb};
 use serde::{Deserialize, Serialize};
 
-use crate::{JsonBody, Token, UserData};
+use crate::{JsonBody, UserCreationData, UserData};
 
 #[derive(Deserialize, Serialize)]
 struct TestUser {
@@ -38,10 +38,11 @@ async fn create_user_and_login() {
     dbg!(&res);
     assert_eq!(res.status(), 201);
 
-    let body: JsonBody<Token> = res.body_json().await.unwrap();
-    let token = body.data;
-    dbg!(&token);
-    assert!(!token.is_empty());
+    let body: JsonBody<UserCreationData> = res.body_json().await.unwrap();
+    let user = body.data;
+    dbg!(&user);
+    assert!(!user.id.is_nil());
+    assert!(!user.token.is_empty());
 
     let route = "/user/login";
 
@@ -58,7 +59,7 @@ async fn create_user_and_login() {
     dbg!(&token);
     assert!(!token.is_empty());
 
-    let route = "/user/me";
+    let route = format!("/user/{}", user.id);
 
     // Get user data with authentication header.
     let mut res = surf::get(format!("{}{}", app.address, &route))
@@ -103,13 +104,15 @@ async fn login_with_illegal_data_returns_401() {
 }
 
 #[async_std::test]
-async fn get_me_without_token_returns_401() {
+async fn get_user_without_token_returns_401() {
     let test_db = TestDb::new().await;
     let app = spawn_test_app(test_db.pool()).await;
 
-    let _ = create_user(&app).await;
+    let (mut res, _) = create_user(&app).await;
+    let body: JsonBody<UserCreationData> = res.body_json().await.unwrap();
+    let user = body.data;
 
-    let route = "/user/me";
+    let route = format!("/user/{}", user.id);
 
     let res = surf::get(format!("{}{}", app.address, &route))
         .await
@@ -119,13 +122,15 @@ async fn get_me_without_token_returns_401() {
 }
 
 #[async_std::test]
-async fn get_me_with_illegal_token_returns_403() {
+async fn get_user_with_illegal_token_returns_403() {
     let test_db = TestDb::new().await;
     let app = spawn_test_app(test_db.pool()).await;
 
-    let _ = create_user(&app).await;
+    let (mut res, _) = create_user(&app).await;
+    let body: JsonBody<UserCreationData> = res.body_json().await.unwrap();
+    let user = body.data;
 
-    let route = "/user/me";
+    let route = format!("/user/{}", user.id);
 
     let res = surf::get(format!("{}{}", app.address, &route))
         .header("Authentication", format!("{}", "thisisnotatoken"))
