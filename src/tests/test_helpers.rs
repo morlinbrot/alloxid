@@ -85,17 +85,17 @@ async fn drop_db(pg_conn: &str, db_name: &str) {
         .expect("Failed to connect to Postgres.");
 
     // Disconnect any existing connections to the DB
-    // conn.execute(&*format!(
-    //     r#"
-    //     SELECT pg_terminate_backend(pg_stat_activity.pid)
-    //     FROM pg_stat_activity
-    //     WHERE pg_stat_activity.datname = '{}'
-    //     AND pid <> pg_backend_pid();
-    //     "#,
-    //     db_name
-    // ))
-    // .await
-    // .expect("Failed to drop existing connections to database.");
+    conn.execute(&*format!(
+        r#"
+        SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE pg_stat_activity.datname = '{}'
+        AND pid <> pg_backend_pid();
+        "#,
+        db_name
+    ))
+    .await
+    .expect("Failed to drop existing connections to database.");
 
     conn.execute(&*format!(r#"DROP DATABASE "{}";"#, db_name))
         .await

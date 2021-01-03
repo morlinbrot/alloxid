@@ -36,7 +36,7 @@ impl Settings {
         // Load .env file into environment, if present.
         dotenv::dotenv().expect("Failed to load .env file");
 
-        // Set the app secret from environment. (Unfortunalely `config` doesn't support
+        // Set the app secret from environment. (Unfortunately `config` doesn't support
         // setting vars into nested parts of the config, e.g. `Settings.app`.
         let secret = std::env::var("APP_SECRET").expect("APP_SECRET must be set.");
         config.set("app.secret", secret)?;

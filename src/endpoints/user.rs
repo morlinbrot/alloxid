@@ -108,9 +108,21 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
         username,
     )
     .fetch_one(pool)
-    .await?;
+    .await;
 
-    let is_valid = verify_password(&row.hashed_password, &password, secret)?;
+    let (user_id, hashed_password) = match row {
+        Ok(row) => (row.user_id, row.hashed_password),
+        Err(err) => match err {
+            sqlx::Error::RowNotFound => {
+                return Ok(Response::new(StatusCode::Unauthorized));
+            }
+            _ => {
+                return Ok(Response::new(StatusCode::InternalServerError));
+            }
+        },
+    };
+
+    let is_valid = verify_password(&hashed_password, &password, secret)?;
 
     if !is_valid {
         let res = Response::new(StatusCode::Unauthorized);
@@ -122,7 +134,7 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
         select token from auth_tokens
         where user_id = $1
         "#,
-        row.user_id,
+        user_id,
     )
     .fetch_one(pool)
     .await?;

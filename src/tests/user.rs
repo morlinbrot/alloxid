@@ -76,7 +76,7 @@ async fn create_user_and_login() {
 }
 
 #[async_std::test]
-async fn login_with_wrong_pw_returns_401() {
+async fn login_with_illegal_data_returns_401() {
     let test_db = TestDb::new().await;
     let app = spawn_test_app(test_db.pool()).await;
 
@@ -84,8 +84,16 @@ async fn login_with_wrong_pw_returns_401() {
 
     let route = "/user/login";
 
-    // Fail to log in with illegal user data.
+    // Wrong user and wrong pw should throw the same error to not give existing usernames away.
     let wrong_data = serde_json::json!({ "username": "synul", "password": "wrong-pw"});
+    let res = surf::post(format!("{}{}", app.address, &route))
+        .body(http_types::Body::from_json(&wrong_data).unwrap())
+        .await
+        .expect(&format!("Failed to execute POST request at {}", &route));
+    dbg!(&res);
+    assert_eq!(res.status(), 401);
+
+    let wrong_data = serde_json::json!({ "username": "wrong-user", "password": "wrong-pw"});
     let res = surf::post(format!("{}{}", app.address, &route))
         .body(http_types::Body::from_json(&wrong_data).unwrap())
         .await
