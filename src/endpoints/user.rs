@@ -43,8 +43,10 @@ async fn insert_new_user(
     let hash = task::spawn_blocking(move || {
         let mut hasher = Hasher::default();
         hasher.configure_iterations(192);
+
         #[cfg(test)]
         hasher.configure_iterations(10);
+
         hasher
             .with_password(&password)
             .with_secret_key(secret)
@@ -169,7 +171,7 @@ pub async fn get_user(req: Request<State>) -> tide::Result {
     };
 
     // TODO: In middleware, check if token ok && id == token.user_id
-    let user_id: Uuid = req.param("id")?;
+    let user_id = Uuid::parse_str(req.param("id")?)?;
 
     let pool = &req.state().db_pool.clone();
 
