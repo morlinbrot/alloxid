@@ -42,6 +42,9 @@ async fn insert_new_user(
     // Since the hashing actually takes some time, we're offloading it onto a dedicated thread pool for blocking tasks.
     let hash = task::spawn_blocking(move || {
         let mut hasher = Hasher::default();
+        hasher.configure_iterations(192);
+        #[cfg(test)]
+        hasher.configure_iterations(10);
         hasher
             .with_password(&password)
             .with_secret_key(secret)
