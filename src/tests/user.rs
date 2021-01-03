@@ -65,7 +65,7 @@ async fn create_user_and_login() {
     let mut res = surf::get(format!("{}{}", app.address, &route))
         .header("Authentication", format!("{}", token))
         .await
-        .expect(&format!("Failed to execute POST request at {}", &route));
+        .expect(&format!("Failed to execute GET request at {}", &route));
     dbg!(&res);
     assert_eq!(res.status(), 200);
 
@@ -116,7 +116,7 @@ async fn get_user_without_token_returns_401() {
 
     let res = surf::get(format!("{}{}", app.address, &route))
         .await
-        .expect(&format!("Failed to execute POST request at {}", &route));
+        .expect(&format!("Failed to execute GET request at {}", &route));
     dbg!(&res);
     assert_eq!(res.status(), 401);
 }
@@ -135,15 +135,40 @@ async fn get_user_with_illegal_token_returns_403() {
     let res = surf::get(format!("{}{}", app.address, &route))
         .header("Authentication", format!("{}", "thisisnotatoken"))
         .await
-        .expect(&format!("Failed to execute POST request at {}", &route));
+        .expect(&format!("Failed to execute GET request at {}", &route));
     dbg!(&res);
     assert_eq!(res.status(), 403);
 }
 
-fn _user_already_taken() {
-    todo!()
+#[async_std::test]
+async fn put_user_data_returns_200() {
+    let test_db = TestDb::new().await;
+    let app = spawn_test_app(test_db.pool()).await;
+
+    let (mut res, _) = create_user(&app).await;
+    let body: JsonBody<UserCreationData> = res.body_json().await.unwrap();
+    let user = body.data;
+    let token = user.token;
+
+    let route = format!("/user/{}", user.id);
+
+    let new_username = "my-new-username";
+    let json = serde_json::json!({ "username": new_username });
+
+    let mut res = surf::put(format!("{}{}", app.address, &route))
+        .header("Authentication", format!("{}", token))
+        .body(http_types::Body::from_json(&json).unwrap())
+        .await
+        .expect(&format!("Failed to execute PUT request at {}", &route));
+    dbg!(&res);
+    assert_eq!(res.status(), 200);
+
+    let body: JsonBody<UserData> = res.body_json().await.unwrap();
+    let user = body.data;
+    dbg!(&user);
+    assert_eq!(user.username, new_username);
 }
 
-fn _wrong_username() {
+fn _user_already_taken() {
     todo!()
 }

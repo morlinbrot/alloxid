@@ -208,3 +208,39 @@ pub async fn get_user(req: Request<State>) -> tide::Result {
     res.set_body(json);
     Ok(res)
 }
+
+pub async fn update_user(mut req: Request<State>) -> tide::Result {
+    // TODO: Create middleware to do this.
+    let _token = match req.header("Authentication") {
+        Some(token) => token.as_str().to_string(),
+        None => {
+            return Ok(Response::new(StatusCode::Unauthorized));
+        }
+    };
+
+    let pool = &req.state().db_pool.clone();
+    // TODO: In middleware, check if token ok && id == token.user_id
+    let user_id = Uuid::parse_str(req.param("id")?)?;
+
+    let mut patch: serde_json::Value = req.body_json().await?;
+    let username = patch.get_mut("username").expect("Failed to parse json.");
+    let username: String = serde_json::from_value(username.take())?;
+
+    let updated_user = sqlx::query_as!(
+        UserData,
+        r#"
+            update users
+            set username = $2
+            where id = $1
+            returning id, username
+            "#,
+        user_id,
+        username,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(Response::builder(200)
+        .body(serde_json::to_string(&JsonBody::new(updated_user))?)
+        .build())
+}

@@ -60,7 +60,7 @@ struct User {
     updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
 pub struct UserData {
     id: Uuid,
     username: String,
@@ -101,6 +101,7 @@ async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<tide::Serv
         .get(|_req: Request<State>| async move { Ok(Response::new(StatusCode::Ok)) });
     app.at("/user").post(user::create_user);
     app.at("/user/:id").get(user::get_user);
+    app.at("/user/:id").put(user::update_user);
     app.at("/user/login").post(user::login);
 
     Ok(app)
