@@ -158,7 +158,7 @@ fn verify_password(hash: &str, password: &str, secret: &str) -> crate::Result<bo
         .with_password(password)
         .with_secret_key(secret)
         .verify()
-        .map_err(|err| crate::Error::from(err))?)
+        .map_err(|err| crate::error::Error::from(err))?)
 }
 
 pub async fn get_user(req: Request<State>) -> tide::Result {

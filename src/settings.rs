@@ -53,7 +53,6 @@ impl Database {
         )
     }
 
-    #[cfg(test)]
     pub fn url_without_db(&self) -> String {
         format!(
             "postgres://{}:{}@{}:{}",

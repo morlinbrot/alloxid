@@ -1,7 +1,8 @@
-use crate::configure_app;
-use crate::settings::Settings;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
+
+use fullstack::configure_app;
+use fullstack::settings::Settings;
 
 pub struct TestApp {
     pub address: String,

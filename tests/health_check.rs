@@ -1,7 +1,5 @@
-mod test_helpers;
-use test_helpers::{spawn_test_app, TestDb};
-
-mod user;
+mod helpers;
+use helpers::{spawn_test_app, TestDb};
 
 #[async_std::test]
 async fn health_check() {

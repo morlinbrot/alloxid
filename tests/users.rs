@@ -1,7 +1,9 @@
-use super::test_helpers::{spawn_test_app, TestApp, TestDb};
 use serde::{Deserialize, Serialize};
 
-use crate::{JsonBody, UserCreationData, UserData};
+use fullstack::{JsonBody, UserCreationData, UserData};
+
+mod helpers;
+use helpers::{spawn_test_app, TestApp, TestDb};
 
 #[derive(Deserialize, Serialize)]
 struct TestUser {

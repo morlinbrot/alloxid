@@ -1,8 +1,15 @@
 [package]
-name = "fullstack-rs"
+name = "fullstack"
 version = "0.1.0"
 authors = ["synul <synul@mailbox.org>"]
 edition = "2018"
+
+[[bin]]
+name = "app"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
