@@ -7,7 +7,9 @@ use sqlx::PgPool;
 use tide::{http::StatusCode, Request, Response};
 use uuid::Uuid;
 
-use crate::{JsonBody, RawUserData, State, User, UserCreationData, UserData, ValidUserData};
+use crate::{
+    JsonBody, RawUserData, ServiceError, State, User, UserCreationData, UserData, ValidUserData,
+};
 
 pub async fn create_user(mut req: Request<State>) -> tide::Result {
     // Only cloning an Arc here so no real costs involved.
@@ -158,7 +160,7 @@ fn verify_password(hash: &str, password: &str, secret: &str) -> crate::Result<bo
         .with_password(password)
         .with_secret_key(secret)
         .verify()
-        .map_err(|err| crate::error::Error::from(err))?)
+        .map_err(|err| ServiceError::from(err))?)
 }
 
 pub async fn get_user(req: Request<State>) -> tide::Result {

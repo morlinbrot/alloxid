@@ -13,6 +13,7 @@ pub mod settings;
 mod endpoints;
 
 use endpoints::user;
+use error::*;
 use settings::Settings;
 
 pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
