@@ -1,8 +1,6 @@
 use argonautica::{Hasher, Verifier};
 use async_std::task;
 use chrono::prelude::*;
-use rand::distributions::Alphanumeric;
-use rand::Rng;
 use sqlx::PgPool;
 use tide::{http::StatusCode, Request, Response};
 use uuid::Uuid;
@@ -10,6 +8,8 @@ use uuid::Uuid;
 use crate::{
     JsonBody, RawUserData, ServiceError, State, User, UserCreationData, UserData, ValidUserData,
 };
+
+use crate::auth::UserId;
 
 pub async fn create_user(mut req: Request<State>) -> tide::Result {
     // Only cloning an Arc here so no real costs involved.
@@ -80,19 +80,16 @@ async fn insert_new_user(
 }
 
 async fn insert_auth_token(pool: &PgPool, user_id: &Uuid) -> Result<String, sqlx::Error> {
-    let id = Uuid::new_v4();
-    let token = rand::thread_rng()
-        .sample_iter(Alphanumeric)
-        .take(32)
-        .map(char::from)
-        .collect::<String>();
+    let token_id = Uuid::new_v4();
+
+    let token = crate::auth::create(UserId::new(*user_id), "User").unwrap();
 
     let record = sqlx::query!(
         r#"
             INSERT INTO auth_tokens ( id, user_id, token) VALUES ( $1, $2, $3)
             RETURNING token
         "#,
-        id,
+        token_id,
         user_id,
         token,
     )
@@ -164,24 +161,16 @@ fn verify_password(hash: &str, password: &str, secret: &str) -> crate::Result<bo
 }
 
 pub async fn get_user(req: Request<State>) -> tide::Result {
-    // TODO: In middleware, check if token ok && id == token.user_id
-    let user_id = Uuid::parse_str(req.param("id")?)?;
-    // TODO: Create middleware to do this.
-    let token = match req.header("Authorization") {
-        Some(token) => token.as_str().to_string(),
-        None => return Ok(Response::new(StatusCode::Unauthorized)),
-    };
-
     let pool = &req.state().db_pool.clone();
+
+    let user_id: &UserId = req.ext().expect("Failed to extract token from request.");
 
     let user = sqlx::query_as!(
         User,
         r#"
-            select u.* from users u
-            join auth_tokens a on a.user_id = u.id
-            where a.token = $1
+            select * from users where id = $1;
         "#,
-        token,
+        user_id.take(),
     )
     .fetch_one(pool)
     .await;
@@ -190,11 +179,9 @@ pub async fn get_user(req: Request<State>) -> tide::Result {
         Err(err) => match err {
             // Requested user doesn't exist, e.g. token must be illegal.
             sqlx::Error::RowNotFound => return Ok(Response::new(StatusCode::Forbidden)),
-            // Any othe sqlx error.
+            // Any other sqlx error.
             _ => return Ok(Response::new(StatusCode::InternalServerError)),
         },
-        // We found a user matching the token but requested id doesn't match, e.g. illegal token.
-        Ok(user) if user.id != user_id => return Ok(Response::new(StatusCode::Forbidden)),
         Ok(user) => UserData {
             id: user.id,
             username: user.username,
@@ -211,11 +198,6 @@ pub async fn get_user(req: Request<State>) -> tide::Result {
 pub async fn update_user(mut req: Request<State>) -> tide::Result {
     // TODO: In middleware, check if token ok && id == token.user_id
     let pool = &req.state().db_pool.clone();
-    // TODO: Create middleware to do this.
-    let _token = match req.header("Authorization") {
-        Some(token) => token.as_str().to_string(),
-        None => return Ok(Response::new(StatusCode::Unauthorized)),
-    };
 
     let user_id = Uuid::parse_str(req.param("id")?)?;
 
@@ -245,11 +227,6 @@ pub async fn update_user(mut req: Request<State>) -> tide::Result {
 pub async fn delete_user(req: Request<State>) -> tide::Result {
     // TODO: In middleware, check if token ok && id == token.user_id
     let user_id = Uuid::parse_str(req.param("id")?)?;
-    // TODO: Create middleware to do this.
-    let _token = match req.header("Authorization") {
-        Some(token) => token.as_str().to_string(),
-        None => return Ok(Response::new(StatusCode::Unauthorized)),
-    };
 
     let pool = &req.state().db_pool.clone();
 

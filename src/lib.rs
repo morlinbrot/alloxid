@@ -10,6 +10,7 @@ use uuid::Uuid;
 pub mod error;
 pub mod settings;
 
+mod auth;
 mod endpoints;
 
 use endpoints::user;
@@ -17,6 +18,7 @@ use error::*;
 use settings::Settings;
 
 pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
+pub type ServiceResult<T = tide::Response, E = anyhow::Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JsonBody<T> {
@@ -28,8 +30,6 @@ impl<T> JsonBody<T> {
         Self { data }
     }
 }
-
-pub type Token = String;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RawUserData {
@@ -89,7 +89,7 @@ pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<tide::
 
     app.with(tide::log::LogMiddleware::new());
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "INFO");
+        std::env::set_var("RUST_LOG", "WARN");
     }
     pretty_env_logger::try_init().ok();
 
@@ -97,10 +97,13 @@ pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<tide::
     app.at("/health-check")
         .get(|_req: Request<State>| async move { Ok(Response::new(StatusCode::Ok)) });
     app.at("/user").post(user::create_user);
-    app.at("/user/:id").get(user::get_user);
-    app.at("/user/:id").put(user::update_user);
-    app.at("/user/:id").delete(user::delete_user);
     app.at("/user/login").post(user::login);
+
+    app.at("/user/:id")
+        .with(auth::authorize)
+        .get(user::get_user)
+        .put(user::update_user)
+        .delete(user::delete_user);
 
     Ok(app)
 }

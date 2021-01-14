@@ -7,6 +7,8 @@ pub enum ErrorKind {
     ParseError,
     TokenCreationError,
     InvalidTokenError,
+    TokenExtractionError,
+    NoPermissionError,
 }
 
 #[derive(Debug)]
@@ -19,9 +21,16 @@ pub struct ServiceError {
 impl std::error::Error for ServiceError {}
 
 impl ServiceError {
-    pub fn new(kind: ErrorKind, msg: String) -> Self {
+    pub fn new(kind: ErrorKind) -> Self {
+        let msg = match kind {
+            ErrorKind::NoPermissionError => "Permission denied.",
+            ErrorKind::TokenExtractionError => "No auth header found.",
+            ErrorKind::TokenCreationError => "Failed to encode token",
+            _ => "Unspecified Error occured.",
+        };
+
         Self {
-            msg,
+            msg: msg.to_string(),
             kind,
             source: None,
         }
@@ -51,6 +60,8 @@ impl fmt::Display for ServiceError {
 
 impl Into<tide::Response> for ServiceError {
     fn into(self) -> tide::Response {
+        tide::log::error!("{:?}", self.to_string());
+
         match self.kind {
             ErrorKind::InvalidTokenError => tide::Response::builder(403).build(),
             _ => tide::Response::builder(500).build(),

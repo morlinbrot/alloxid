@@ -22,6 +22,7 @@ chrono = { version = "0.4.19", features = ["serde"] }
 dotenv = "0.15.0"
 futures = { version = "0.3.8", features = ["compat"] }
 http-types = "2.9.0"
+jsonwebtoken = "7.2.0"
 pretty_env_logger = "0.4.0"
 rand = "0.8.0"
 serde = { version = "1.0.118", features = ["derive"] }
