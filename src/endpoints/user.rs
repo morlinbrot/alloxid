@@ -14,19 +14,29 @@ use crate::auth::UserId;
 pub async fn create_user(mut req: Request<State>) -> tide::Result {
     // Only cloning an Arc here so no real costs involved.
     let pool = &req.state().db_pool.clone();
-    let secret = &req.state().settings.clone().app.secret;
+
+    let settings = &req.state().settings.clone();
+    let secret = settings.app.secret.as_ref();
 
     let raw: RawUserData = req.body_json().await?;
     let valid_user_data = ValidUserData::parse(raw)?;
 
     let user = insert_new_user(pool, valid_user_data, secret).await?;
     let token = insert_auth_token(pool, &user.id).await?;
-    let data = UserCreationData { token, id: user.id };
 
+    let data = UserCreationData { token, id: user.id };
     let json = serde_json::to_string(&JsonBody::new(data))?;
 
-    let mut res = Response::new(StatusCode::Created);
-    res.set_body(json);
+    let location = format!(
+        "{}:{}/user/{}",
+        settings.app.host, settings.app.port, user.id
+    );
+
+    let res = Response::builder(StatusCode::Created)
+        .body(json)
+        .header("Location", location)
+        .build();
+
     Ok(res)
 }
 

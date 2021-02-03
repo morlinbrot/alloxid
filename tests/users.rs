@@ -39,6 +39,8 @@ async fn create_user_and_login() {
 
     dbg!(&res.status());
     assert_eq!(res.status(), 201);
+    dbg!(&res.header("Location"));
+    assert!(res.header("Location").is_some());
 
     let body: JsonBody<UserCreationData> = res.body_json().await.unwrap();
     let user = body.data;
