@@ -144,11 +144,11 @@ async fn get_user_with_malformed_token_returns_401() {
     assert_eq!(res.status(), 401);
 }
 
-#[allow(dead_code)]
-#[async_std::test]
-async fn get_user_with_illegal_token_returns_403() {
-    todo!()
-}
+// #[allow(dead_code)]
+// #[async_std::test]
+// async fn get_user_with_illegal_token_returns_403() {
+//     todo!()
+// }
 
 #[async_std::test]
 async fn put_user_data_returns_200() {
