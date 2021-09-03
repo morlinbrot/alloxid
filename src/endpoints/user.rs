@@ -2,6 +2,7 @@ use argonautica::{Hasher, Verifier};
 use async_std::task;
 use chrono::prelude::*;
 use sqlx::PgPool;
+use std::convert::TryInto;
 use tide::{http::StatusCode, Request, Response};
 use uuid::Uuid;
 
@@ -19,7 +20,7 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
     let secret = settings.app.secret.as_ref();
 
     let raw: RawUserData = req.body_json().await?;
-    let valid_user_data = ValidUserData::parse(raw)?;
+    let valid_user_data: ValidUserData = raw.try_into()?;
 
     let user = insert_new_user(pool, valid_user_data, secret).await?;
     let token = insert_auth_token(pool, &user.id).await?;

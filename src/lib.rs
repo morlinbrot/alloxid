@@ -1,6 +1,7 @@
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
+use std::convert::TryFrom;
 use tide::http::headers::HeaderValue;
 use tide::http::StatusCode;
 use tide::security::{CorsMiddleware, Origin};
@@ -39,10 +40,12 @@ pub struct RawUserData {
 
 pub struct ValidUserData(RawUserData);
 
-impl ValidUserData {
-    pub fn parse(create_user: RawUserData) -> Result<Self> {
+impl TryFrom<RawUserData> for ValidUserData {
+    type Error = anyhow::Error;
+
+    fn try_from(value: RawUserData) -> Result<Self, Self::Error> {
         // TODO: Add some validation logic.
-        let RawUserData { username, password } = create_user;
+        let RawUserData { username, password } = value;
 
         Ok(Self(RawUserData { username, password }))
     }
