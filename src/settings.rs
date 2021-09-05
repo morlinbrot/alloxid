@@ -1,6 +1,7 @@
 use config::{Config, ConfigError, File};
 use dotenv;
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Settings {
@@ -43,20 +44,33 @@ impl Settings {
 
         config.try_into()
     }
+
+    pub fn new_for_test() -> Result<Self, ConfigError> {
+        let mut settings = Settings::new()?;
+
+        let db_name = format!("{}-{}", settings.database.name, Uuid::new_v4().to_string());
+        settings.database.name = db_name;
+
+        Ok(settings)
+    }
 }
 
 impl Database {
-    pub fn url(&self) -> String {
+    pub fn conn_string(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}",
+            self.username, self.password, self.host, self.port
+        )
+    }
+
+    pub fn full_url(&self) -> String {
         format!(
             "postgres://{}:{}@{}:{}/{}",
             self.username, self.password, self.host, self.port, self.name
         )
     }
 
-    pub fn url_without_db(&self) -> String {
-        format!(
-            "postgres://{}:{}@{}:{}",
-            self.username, self.password, self.host, self.port
-        )
+    pub fn name(&self) -> String {
+        self.name.clone()
     }
 }

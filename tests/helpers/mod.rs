@@ -1,76 +1,82 @@
 use sqlx::{Connection, Executor, PgConnection, PgPool};
-use uuid::Uuid;
 
 use fullstack::configure_app;
 use fullstack::settings::Settings;
 
 pub struct TestApp {
     pub address: String,
+    // We want to keep this alive until the end of the test.
+    #[allow(dead_code)]
+    test_db: TestDb,
 }
 
 #[allow(dead_code)]
 pub struct TestDb {
     db_name: String,
-    pg_conn: String,
-    pool: PgPool,
-}
-
-pub async fn spawn_test_app(db_pool: PgPool) -> TestApp {
-    let settings = Settings::new().expect("Failed to load configuration.");
-
-    let address = format!("http://{}:{}", settings.app.host, settings.app.port);
-
-    let app = configure_app(db_pool, settings).await.unwrap();
-
-    let _ = async_std::task::spawn(app.listen(address.clone()));
-    TestApp { address }
+    db_pool: PgPool,
+    conn_string: String,
 }
 
 impl TestDb {
-    pub async fn new() -> Self {
-        let Settings { database, .. } = Settings::new().expect("Failed to load configuration.");
+    pub async fn new(settings: &Settings) -> Self {
+        let Settings { database, .. } = settings;
 
-        let pg_conn = database.url_without_db();
-        let db_name = format!("{}-{}", database.name, Uuid::new_v4().to_string());
-        let full_url = format!("{}/{}", pg_conn, db_name);
+        let conn_string = database.conn_string();
+        let full_url = database.full_url();
 
-        create_db(&pg_conn, &db_name).await;
+        // create_db(&conn_string, &db_name).await;
+        let mut pg_conn = PgConnection::connect(&conn_string).await.expect("Failed to connect to Postgres.");
+        pg_conn.execute(&*format!(r#"CREATE DATABASE "{}";"#, database.name)).await.expect("Failed to create database.");
 
-        let pool = PgPool::connect(&full_url)
-            .await
-            .expect("Failed to connect to database.");
-
-        migrate_db(&pool).await;
+        let db_pool = PgPool::connect(&full_url).await.expect("Failed to connect to database.");
+        migrate_db(&db_pool).await;
 
         Self {
-            db_name,
-            pg_conn,
-            pool,
+            db_name: database.name(),
+            db_pool,
+            conn_string,
         }
     }
 
     pub fn pool(&self) -> PgPool {
-        self.pool.clone()
+        self.db_pool.clone()
     }
 }
 
 impl Drop for TestDb {
     fn drop(&mut self) {
-        async_std::task::block_on(self.pool.close());
-        let _ = self.pool;
-        async_std::task::block_on(drop_db(&self.pg_conn, &self.db_name));
+        async_std::task::block_on(self.db_pool.close());
+        let _ = self.db_pool;
+        async_std::task::block_on(drop_db(&self.conn_string, &self.db_name));
     }
 }
 
-async fn create_db(pg_conn: &str, db_name: &str) {
-    let mut conn = PgConnection::connect(pg_conn)
-        .await
-        .expect("Failed to connect to Postgres.");
 
-    conn.execute(&*format!(r#"CREATE DATABASE "{}";"#, db_name))
-        .await
-        .expect("Failed to create database.");
+pub async fn spawn_test_app() -> TestApp {
+    Lazy::force(&TRACING);
+
+    let settings = Settings::new_for_test().expect("Failed to load configuration.");
+
+    let test_db = TestDb::new(&settings).await;
+
+    let address = format!("http://{}:{}", settings.app.host, settings.app.port);
+
+    let app = configure_app(test_db.pool(), settings).await.unwrap();
+
+    let _ = async_std::task::spawn(app.listen(address.clone()));
+
+    TestApp { address, test_db }
 }
+
+// async fn create_db(pg_conn: &str, db_name: &str) {
+//     let mut conn = PgConnection::connect(pg_conn)
+//         .await
+//         .expect("Failed to connect to Postgres.");
+
+//     conn.execute(&*format!(r#"CREATE DATABASE "{}";"#, db_name))
+//         .await
+//         .expect("Failed to create database.");
+// }
 
 async fn migrate_db(db_pool: &PgPool) {
     sqlx::migrate!("./migrations")
@@ -80,8 +86,8 @@ async fn migrate_db(db_pool: &PgPool) {
 }
 
 #[allow(dead_code)]
-async fn drop_db(pg_conn: &str, db_name: &str) {
-    let mut conn = PgConnection::connect(pg_conn)
+async fn drop_db(conn_string: &str, db_name: &str) {
+    let mut conn = PgConnection::connect(conn_string)
         .await
         .expect("Failed to connect to Postgres.");
 

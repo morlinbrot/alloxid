@@ -1,10 +1,9 @@
 mod helpers;
-use helpers::{spawn_test_app, TestDb};
+use helpers::spawn_test_app;
 
 #[async_std::test]
 async fn health_check() {
-    let test_db = TestDb::new().await;
-    let app = spawn_test_app(test_db.pool()).await;
+    let app = spawn_test_app().await;
 
     let route = "/health-check";
 

@@ -1,15 +1,15 @@
-use sqlx::postgres::PgPool;
-
 use fullstack::settings::Settings;
 use fullstack::{configure_app, Result};
+use sqlx::postgres::PgPool;
+
 
 #[async_std::main]
 async fn main() -> Result<()> {
-    //tide::log::start();
+
     let settings = Settings::new()?;
     let address = format!("{}:{}", settings.app.host, settings.app.port);
 
-    let db_pool = PgPool::connect(&settings.database.url()).await?;
+    let db_pool = PgPool::connect(&settings.database.full_url()).await?;
 
     let app = configure_app(db_pool, settings).await?;
 
