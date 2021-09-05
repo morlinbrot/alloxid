@@ -1,7 +1,7 @@
 use config::{Config, ConfigError, File};
 use dotenv;
 use serde::Deserialize;
-use uuid::Uuid;
+use names::Generator;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Settings {
@@ -9,21 +9,40 @@ pub struct Settings {
     pub database: Database,
 }
 
+// #[derive(Clone, Debug, Deserialize)]
+// pub struct SettingsInfo {
+//     pub app: AppInfo,
+//     pub database: DatabaseInfo,
+// }
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct App {
     pub host: String,
     pub port: usize,
-    pub secret: String,
+    pub(crate) secret: String,
 }
+
+// #[derive(Clone, Debug, Deserialize)]
+// pub struct AppInfo {
+//     pub host: String,
+//     pub port: usize,
+// }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Database {
     pub host: String,
     pub name: String,
-    pub password: String,
+    password: String,
     pub port: usize,
-    pub username: String,
+    username: String,
 }
+
+// #[derive(Clone, Debug, Deserialize)]
+// pub struct DatabaseInfo {
+//     pub host: String,
+//     pub name: String,
+//     pub port: usize,
+// }
 
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
@@ -48,7 +67,9 @@ impl Settings {
     pub fn new_for_test() -> Result<Self, ConfigError> {
         let mut settings = Settings::new()?;
 
-        let db_name = format!("{}-{}", settings.database.name, Uuid::new_v4().to_string());
+        let mut generator = Generator::default();
+        let name = generator.next().expect("Failed to generate random db name.");
+        let db_name = format!("{}-{}", settings.database.name, name);
         settings.database.name = db_name;
 
         Ok(settings)

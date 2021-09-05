@@ -2,9 +2,13 @@ use fullstack::settings::Settings;
 use fullstack::{configure_app, Result};
 use sqlx::postgres::PgPool;
 
+use fullstack::telemetry::{get_subscriber, init_subscriber};
 
 #[async_std::main]
 async fn main() -> Result<()> {
+
+    let subscriber = get_subscriber("fullstack".into(), "debug".into());
+    init_subscriber(subscriber);
 
     let settings = Settings::new()?;
     let address = format!("{}:{}", settings.app.host, settings.app.port);

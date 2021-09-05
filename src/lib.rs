@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 pub mod error;
 pub mod settings;
+pub mod telemetry;
 
 mod auth;
 mod endpoints;
@@ -79,8 +80,8 @@ pub struct State {
 }
 
 pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<tide::Server<State>> {
-    let state = State { db_pool, settings };
 
+    let state = State { db_pool, settings };
     let mut app = tide::with_state(state);
 
     let cors = CorsMiddleware::new()
@@ -89,12 +90,6 @@ pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<tide::
         .allow_credentials(false);
 
     app.with(cors);
-
-    app.with(tide::log::LogMiddleware::new());
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "WARN");
-    }
-    pretty_env_logger::try_init().ok();
 
     app.at("/").serve_dir("dist/")?;
     app.at("/health-check")
