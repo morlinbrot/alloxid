@@ -1,12 +1,13 @@
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use once_cell::sync::Lazy;
+use tracing::{debug, instrument, trace};
 
 use fullstack::configure_app;
 use fullstack::settings::Settings;
 use fullstack::telemetry::{get_subscriber, init_subscriber};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
-    let subscriber = get_subscriber("fullstack-test".into(), "debug".into());
+    let subscriber = get_subscriber("fullstack-test".into(), "info,sqlx=warn".into());
     init_subscriber(subscriber);
 });
 
@@ -14,17 +15,20 @@ pub struct TestApp {
     pub address: String,
     // We want to keep this alive until the end of the test.
     #[allow(dead_code)]
-    test_db: TestDb,
+    pub test_db: TestDb,
+    pub port: usize,
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct TestDb {
-    db_name: String,
+    pub db_name: String,
     db_pool: PgPool,
     conn_string: String,
 }
 
 impl TestDb {
+    #[instrument(level = "debug", skip(settings))]
     pub async fn new(settings: &Settings) -> Self {
         let Settings { database, .. } = settings;
 
@@ -38,6 +42,7 @@ impl TestDb {
         let db_pool = PgPool::connect(&full_url).await.expect("Failed to connect to database.");
         migrate_db(&db_pool).await;
 
+        debug!("Created & migrated new TestDb: {}", &settings.database.name());
         Self {
             db_name: database.name(),
             db_pool,
@@ -51,14 +56,20 @@ impl TestDb {
 }
 
 impl Drop for TestDb {
+    #[instrument(level = "debug", skip(self))]
     fn drop(&mut self) {
+        trace!("Blocking to close pool for TestDb: {}", &self.db_name);
         async_std::task::block_on(self.db_pool.close());
+        trace!("Closed pool for TestDb: {}", &self.db_name);
         let _ = self.db_pool;
+        trace!("Blocking to drop TestDb: {}", &self.db_name);
         async_std::task::block_on(drop_db(&self.conn_string, &self.db_name));
+        debug!("Closed pool & dropped TestDb: {}", &self.db_name);
     }
 }
 
 
+#[instrument(level = "debug")]
 pub async fn spawn_test_app() -> TestApp {
     Lazy::force(&TRACING);
 
@@ -66,13 +77,15 @@ pub async fn spawn_test_app() -> TestApp {
 
     let test_db = TestDb::new(&settings).await;
 
-    let address = format!("http://{}:{}", settings.app.host, settings.app.port);
+    let port = settings.app.port;
+    let address = format!("http://{}:{}", settings.app.host, port);
 
     let app = configure_app(test_db.pool(), settings).await.unwrap();
 
     let _ = async_std::task::spawn(app.listen(address.clone()));
 
-    TestApp { address, test_db }
+    debug!("TestApp listening on {} with DB {}", &address, &test_db.db_name);
+    TestApp { address, test_db, port }
 }
 
 // async fn create_db(pg_conn: &str, db_name: &str) {

@@ -2,6 +2,7 @@ use config::{Config, ConfigError, File};
 use dotenv;
 use serde::Deserialize;
 use names::Generator;
+use rand::{Rng, thread_rng};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Settings {
@@ -9,24 +10,12 @@ pub struct Settings {
     pub database: Database,
 }
 
-// #[derive(Clone, Debug, Deserialize)]
-// pub struct SettingsInfo {
-//     pub app: AppInfo,
-//     pub database: DatabaseInfo,
-// }
-
 #[derive(Clone, Debug, Deserialize)]
 pub struct App {
     pub host: String,
     pub port: usize,
     pub(crate) secret: String,
 }
-
-// #[derive(Clone, Debug, Deserialize)]
-// pub struct AppInfo {
-//     pub host: String,
-//     pub port: usize,
-// }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Database {
@@ -36,13 +25,6 @@ pub struct Database {
     pub port: usize,
     username: String,
 }
-
-// #[derive(Clone, Debug, Deserialize)]
-// pub struct DatabaseInfo {
-//     pub host: String,
-//     pub name: String,
-//     pub port: usize,
-// }
 
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
@@ -71,6 +53,10 @@ impl Settings {
         let name = generator.next().expect("Failed to generate random db name.");
         let db_name = format!("{}-{}", settings.database.name, name);
         settings.database.name = db_name;
+
+        let mut rng = thread_rng();
+        let port = rng.gen_range(8080..9000);
+        settings.app.port = port;
 
         Ok(settings)
     }

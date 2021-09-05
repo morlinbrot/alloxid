@@ -16,7 +16,7 @@ use crate::auth::UserId;
 #[instrument(level = "debug", skip(req))]
 pub async fn create_user(mut req: Request<State>) -> tide::Result {
     let log_info = LogInfo::from_req(&req);
-    debug!("Request received. {}", &log_info);
+    debug!("{} Request received.", &log_info);
 
     // Only cloning an Arc here so no real costs involved.
     let pool = &req.state().db_pool.clone();
@@ -25,12 +25,13 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
     let secret = settings.app.secret.as_ref();
 
     let raw: RawUserData = req.body_json().await?;
-    let valid_user_data: ValidUserData = raw.try_into()?;
-    debug!("{} Parsed valid username: {:?}", &log_info, &valid_user_data.0.username);
+    let valid_user_data: ValidUserData = raw.try_into().map_err(|err| {
+        error!("{} {:?}", &log_info, err);
+        err
+    })?;
 
     let user = insert_new_user(pool, valid_user_data, secret, &log_info).instrument(debug_span!("insert_new_user")).await?;
     let token = insert_auth_token(pool, &user.id, &log_info).instrument(debug_span!("insert_auth_token")).await?;
-    debug!("{} Inserted user with id {:?}", &log_info, user.id);
 
     let data = UserCreationData { token, id: user.id };
     let json = serde_json::to_string(&JsonBody::new(data))?;
@@ -46,7 +47,6 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
         .build();
 
     info!("{} Successfully created user with id {}", &log_info, &user.id);
-    // let _ = span_guard;
     Ok(res)
 }
 
@@ -100,7 +100,7 @@ async fn insert_new_user(
     .fetch_one(pool)
     .await
     .map_err(|err| {
-        error!("Failed to execute query: {:?}", err);
+        error!("{} {:?}", &log_info, err);
         err
     });
 
@@ -125,7 +125,7 @@ async fn insert_auth_token(pool: &PgPool, user_id: &Uuid, log_info: &LogInfo) ->
     .fetch_one(pool)
     .await
     .map_err(|err| {
-        error!("Failed to execute query: {:?}", err);
+        error!("{} {:?}", &log_info, err);
         err
     })?;
 
@@ -136,7 +136,7 @@ async fn insert_auth_token(pool: &PgPool, user_id: &Uuid, log_info: &LogInfo) ->
 #[instrument(level = "debug", skip(req))]
 pub async fn login(mut req: Request<State>) -> tide::Result {
     let log_info = LogInfo::from_req(&req);
-    debug!("Request received. {}", &log_info);
+    debug!("{} Request received.", &log_info);
 
     let pool = &req.state().db_pool.clone();
     let secret = &req.state().settings.clone().app.secret;
@@ -194,7 +194,7 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
     let json = serde_json::to_string(&JsonBody::new(row.token))?;
     let mut res = Response::new(StatusCode::Ok);
     res.set_body(json);
-    debug!("{} Successfully logged in.", &log_info);
+    info!("{} Successfully logged in.", &log_info);
     Ok(res)
 }
 
@@ -211,7 +211,7 @@ fn verify_password(hash: &str, password: &str, secret: &str) -> crate::Result<bo
 #[instrument(level = "debug", skip(req))]
 pub async fn get_user(req: Request<State>) -> tide::Result {
     let log_info = LogInfo::from_req(&req);
-    debug!("Request received. {}", &log_info);
+    debug!("{} Request received.", &log_info);
 
     let pool = &req.state().db_pool.clone();
     let user_id: &UserId = req.ext().expect("Failed to extract token from request.");
@@ -249,14 +249,14 @@ pub async fn get_user(req: Request<State>) -> tide::Result {
 
     let mut res = Response::new(StatusCode::Ok);
     res.set_body(json);
-    debug!("{} Successfully got user.", &log_info);
+    info!("{} Successfully got user.", &log_info);
     Ok(res)
 }
 
 #[instrument(level = "debug", skip(req))]
 pub async fn update_user(mut req: Request<State>) -> tide::Result {
     let log_info = LogInfo::from_req(&req);
-    debug!("Request received. {}", &log_info);
+    debug!("{} Request received.", &log_info);
 
     // TODO: In middleware, check if token ok && id == token.user_id
     let pool = &req.state().db_pool.clone();
@@ -283,7 +283,7 @@ pub async fn update_user(mut req: Request<State>) -> tide::Result {
     .instrument(query_span)
     .await?;
 
-    debug!("{} Successfully updated user.", &log_info);
+    info!("{} Successfully updated user.", &log_info);
     Ok(Response::builder(200)
         .body(serde_json::to_string(&JsonBody::new(updated_user))?)
         .build())
@@ -292,7 +292,7 @@ pub async fn update_user(mut req: Request<State>) -> tide::Result {
 #[instrument(level = "debug", skip(req))]
 pub async fn delete_user(req: Request<State>) -> tide::Result {
     let log_info = LogInfo::from_req(&req);
-    debug!("Request received. {}", &log_info);
+    debug!("{} Request received.", &log_info);
 
     // TODO: In middleware, check if token ok && id == token.user_id
     let user_id = Uuid::parse_str(req.param("id")?)?;
@@ -307,6 +307,6 @@ pub async fn delete_user(req: Request<State>) -> tide::Result {
         .execute(pool)
         .await?;
 
-    debug!("{} Successfully deleted user.", &log_info);
+    info!("{} Successfully deleted user.", &log_info);
     Ok(Response::builder(200).build())
 }

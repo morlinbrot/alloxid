@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::State;
 
 pub struct LogInfo {
+    app_port: usize,
     req_id: Uuid,
     db_name: String,
 }
@@ -15,13 +16,13 @@ pub struct LogInfo {
 impl LogInfo {
     pub fn from_req(req: &Request<State>) -> Self {
         let req_id = Uuid::new_v4();
-        Self { req_id, db_name: req.state().settings.database.name.clone() }
+        Self { app_port: req.state().settings.app.port, req_id, db_name: req.state().settings.database.name.clone() }
     }
 }
 
 impl std::fmt::Display for LogInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "LogInfo{{req_id={} db_name={}}}", self.req_id, self.db_name)
+        write!(f, "LogInfo{{app_port={} req_id={} db_name={}}}", self.app_port, self.req_id, self.db_name)
     }
 }
 
