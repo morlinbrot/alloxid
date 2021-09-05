@@ -8,15 +8,18 @@ use tracing::{debug, debug_span, error, info, Instrument, instrument};
 use uuid::Uuid;
 
 use crate::{
-    JsonBody, RawUserData, ServiceError, State, User, UserCreationData, UserData, ValidUserData, telemetry::LogInfo
+    JsonBody, RawUserData, ServiceError, State, User, UserCreationData, UserData, ValidUserData
 };
 
 use crate::auth::UserId;
 
-#[instrument(level = "debug", skip(req))]
+#[instrument(level = "info", skip(req), fields(
+    app_port = req.state().settings.app.port,
+    db_name = %req.state().settings.database.name.clone(),
+    req_id = %Uuid::new_v4(),
+))]
 pub async fn create_user(mut req: Request<State>) -> tide::Result {
-    let log_info = LogInfo::from_req(&req);
-    debug!("{} Request received.", &log_info);
+    debug!("Request received");
 
     // Only cloning an Arc here so no real costs involved.
     let pool = &req.state().db_pool.clone();
@@ -26,12 +29,12 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
 
     let raw: RawUserData = req.body_json().await?;
     let valid_user_data: ValidUserData = raw.try_into().map_err(|err| {
-        error!("{} {:?}", &log_info, err);
+        error!("Err: {:?}", err);
         err
     })?;
 
-    let user = insert_new_user(pool, valid_user_data, secret, &log_info).instrument(debug_span!("insert_new_user")).await?;
-    let token = insert_auth_token(pool, &user.id, &log_info).instrument(debug_span!("insert_auth_token")).await?;
+    let user = insert_new_user(pool, valid_user_data, secret).instrument(debug_span!("insert_new_user")).await?;
+    let token = insert_auth_token(pool, &user.id).instrument(debug_span!("insert_auth_token")).await?;
 
     let data = UserCreationData { token, id: user.id };
     let json = serde_json::to_string(&JsonBody::new(data))?;
@@ -46,7 +49,7 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
         .header("Location", location)
         .build();
 
-    info!("{} Successfully created user with id {}", &log_info, &user.id);
+    info!("Successfully created user with id {}", &user.id);
     Ok(res)
 }
 
@@ -54,7 +57,6 @@ async fn insert_new_user(
     pool: &PgPool,
     user_data: ValidUserData,
     secret: &str,
-    log_info: &LogInfo,
 ) -> Result<User, sqlx::Error> {
 
     let id = Uuid::new_v4();
@@ -79,6 +81,7 @@ async fn insert_new_user(
     })
     .await;
 
+    let user_span = debug_span!("user_span");
     let res = sqlx::query_as!(
         User,
         r#"
@@ -98,21 +101,23 @@ async fn insert_new_user(
         date,
     )
     .fetch_one(pool)
+    .instrument(user_span)
     .await
     .map_err(|err| {
-        error!("{} {:?}", &log_info, err);
+        error!("Err: {:?}", err);
         err
     });
 
-    debug!("{} Inserted user into DB.", log_info);
+    debug!("Inserted user into DB for user_id={}.", id);
     res
 }
 
-async fn insert_auth_token(pool: &PgPool, user_id: &Uuid, log_info: &LogInfo) -> Result<String, sqlx::Error> {
+async fn insert_auth_token(pool: &PgPool, user_id: &Uuid) -> Result<String, sqlx::Error> {
     let token_id = Uuid::new_v4();
 
     let token = crate::auth::create(UserId::new(*user_id), "User").unwrap();
 
+    let token_span = debug_span!("token_span");
     let record = sqlx::query!(
         r#"
             INSERT INTO auth_tokens ( id, user_id, token) VALUES ( $1, $2, $3)
@@ -123,20 +128,24 @@ async fn insert_auth_token(pool: &PgPool, user_id: &Uuid, log_info: &LogInfo) ->
         token,
     )
     .fetch_one(pool)
+    .instrument(token_span)
     .await
     .map_err(|err| {
-        error!("{} {:?}", &log_info, err);
+        error!("Err: {:?}", err);
         err
     })?;
 
-    debug!("{} Inserted token into DB.", log_info);
+    debug!("Inserted token into DB for user_id={}", user_id);
     Ok(record.token)
 }
 
-#[instrument(level = "debug", skip(req))]
+#[instrument(level = "info", skip(req), fields(
+    app_port = req.state().settings.app.port,
+    db_name = %req.state().settings.database.name.clone(),
+    req_id = %Uuid::new_v4(),
+))]
 pub async fn login(mut req: Request<State>) -> tide::Result {
-    let log_info = LogInfo::from_req(&req);
-    debug!("{} Request received.", &log_info);
+    debug!("Request received");
 
     let pool = &req.state().db_pool.clone();
     let secret = &req.state().settings.clone().app.secret;
@@ -157,22 +166,23 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
 
     let (user_id, hashed_password) = match row {
         Ok(row) => {
-            debug!("{} Found matching user_id {}", &log_info, &row.user_id);
+            debug!("Found matching user_id {}", &row.user_id);
             (row.user_id, row.hashed_password)
         },
         Err(err) => match err {
             sqlx::Error::RowNotFound => {
-                error!("{} {:?}", &log_info, err);
+                error!("Err: {:?}", err);
                 return Ok(Response::new(StatusCode::Unauthorized));
             }
             _ => {
-                error!("{} {:?}", &log_info, err);
+                error!("Err: {:?}", err);
                 return Ok(Response::new(StatusCode::InternalServerError));
             }
         },
     };
 
     let is_valid = verify_password(&hashed_password, &password, secret)?;
+    debug!(is_valid);
 
     if !is_valid {
         let res = Response::new(StatusCode::Unauthorized);
@@ -194,7 +204,8 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
     let json = serde_json::to_string(&JsonBody::new(row.token))?;
     let mut res = Response::new(StatusCode::Ok);
     res.set_body(json);
-    info!("{} Successfully logged in.", &log_info);
+
+    info!("Successfully logged in user_id={}", user_id);
     Ok(res)
 }
 
@@ -208,14 +219,18 @@ fn verify_password(hash: &str, password: &str, secret: &str) -> crate::Result<bo
         .map_err(|err| ServiceError::from(err))?)
 }
 
-#[instrument(level = "debug", skip(req))]
+#[instrument(level = "info", skip(req), fields(
+    app_port = req.state().settings.app.port,
+    db_name = %req.state().settings.database.name.clone(),
+    req_id = %Uuid::new_v4(),
+))]
 pub async fn get_user(req: Request<State>) -> tide::Result {
-    let log_info = LogInfo::from_req(&req);
-    debug!("{} Request received.", &log_info);
+    debug!("Request received");
 
     let pool = &req.state().db_pool.clone();
     let user_id: &UserId = req.ext().expect("Failed to extract token from request.");
 
+    let query_span = debug_span!("query_span");
     let user = sqlx::query_as!(
         User,
         r#"
@@ -224,24 +239,28 @@ pub async fn get_user(req: Request<State>) -> tide::Result {
         user_id.take(),
     )
     .fetch_one(pool)
+    .instrument(query_span)
     .await;
 
     let user_data = match user {
         Err(err) => match err {
             // Requested user doesn't exist, e.g. token must be illegal.
             sqlx::Error::RowNotFound => {
-                error!("{} {:?}", &log_info, err);
+                error!("Err: {:?}", err);
                 return Ok(Response::new(StatusCode::Forbidden))
             },
             // Any other sqlx error.
             _ => {
-                error!("{} {:?}", &log_info, err);
+                error!("Err: {:?}", err);
                 return Ok(Response::new(StatusCode::InternalServerError))
             },
         },
-        Ok(user) => UserData {
-            id: user.id,
-            username: user.username,
+        Ok(user) => {
+            debug!("Found user id={} username={}", user.id, user.username);
+            UserData {
+                id: user.id,
+                username: user.username,
+            }
         },
     };
 
@@ -249,14 +268,18 @@ pub async fn get_user(req: Request<State>) -> tide::Result {
 
     let mut res = Response::new(StatusCode::Ok);
     res.set_body(json);
-    info!("{} Successfully got user.", &log_info);
+
+    info!("Successfully got user_id={:?}", user_id);
     Ok(res)
 }
 
-#[instrument(level = "debug", skip(req))]
+#[instrument(level = "info", skip(req), fields(
+    app_port = req.state().settings.app.port,
+    db_name = %req.state().settings.database.name.clone(),
+    req_id = %Uuid::new_v4(),
+))]
 pub async fn update_user(mut req: Request<State>) -> tide::Result {
-    let log_info = LogInfo::from_req(&req);
-    debug!("{} Request received.", &log_info);
+    debug!("Request received");
 
     // TODO: In middleware, check if token ok && id == token.user_id
     let pool = &req.state().db_pool.clone();
@@ -283,16 +306,19 @@ pub async fn update_user(mut req: Request<State>) -> tide::Result {
     .instrument(query_span)
     .await?;
 
-    info!("{} Successfully updated user.", &log_info);
+    info!("Successfully updated user_id={}", user_id);
     Ok(Response::builder(200)
         .body(serde_json::to_string(&JsonBody::new(updated_user))?)
         .build())
 }
 
-#[instrument(level = "debug", skip(req))]
+#[instrument(level = "info", skip(req), fields(
+    app_port = req.state().settings.app.port,
+    db_name = %req.state().settings.database.name.clone(),
+    req_id = %Uuid::new_v4(),
+))]
 pub async fn delete_user(req: Request<State>) -> tide::Result {
-    let log_info = LogInfo::from_req(&req);
-    debug!("{} Request received.", &log_info);
+    debug!("Request received");
 
     // TODO: In middleware, check if token ok && id == token.user_id
     let user_id = Uuid::parse_str(req.param("id")?)?;
@@ -307,6 +333,6 @@ pub async fn delete_user(req: Request<State>) -> tide::Result {
         .execute(pool)
         .await?;
 
-    info!("{} Successfully deleted user.", &log_info);
+    info!("Successfully deleted user_id={}", user_id);
     Ok(Response::builder(200).build())
 }
