@@ -94,6 +94,8 @@ pub async fn spawn_test_app() -> TestApp {
         .expect("Failed to configure app.");
 
     let _ = async_std::task::spawn(app.listen(address.clone()));
+    // We make sure that the app is actually spun up before we run our tests.
+    async_std::task::sleep(std::time::Duration::from_millis(100)).await;
 
     debug!(
         "TestApp listening on {} with DB {}",

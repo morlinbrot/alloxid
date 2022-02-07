@@ -26,11 +26,13 @@ psql -U postgres
 ```
 
 ## Notes
-It's not possible to run all tests at the same time (`cargo test`) because of some kind
+~~It's not possible to run all tests at the same time (`cargo test`) because of some kind
 of concurrency issue. Measures that have been taken to check the database for any
 open connections before tearing it down don't seem to work properly, which is why the
 tests will fail sometimes when a thread tries to tear down the database while a connection
-is still active. Tests can be run individually though.
+is still active. Tests can be run individually though.~~  
+EDIT: Problem might have been a different one. The introduction of a short timeout during
+TestApp setup let's us run all tests at the same time.
 
 ## Inspiration
 https://www.youtube.com/watch?v=yNe9Xr35n4Q \
