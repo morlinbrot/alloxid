@@ -7,7 +7,7 @@ async fn health_check() {
 
     let route = "/health-check";
 
-    let res = surf::get(format!("{}{}", app.address, route))
+    let res = reqwest::get(format!("{}{}", app.address, route))
         .await
         .expect(&format!("Failed to execute GET request at {}", &route));
     dbg!(&res);

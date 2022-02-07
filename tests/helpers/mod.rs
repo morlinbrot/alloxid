@@ -1,5 +1,5 @@
-use sqlx::{Connection, Executor, PgConnection, PgPool};
 use once_cell::sync::Lazy;
+use sqlx::{Connection, Executor, PgConnection, PgPool};
 use tracing::{debug, instrument, trace};
 
 use fullstack::configure_app;
@@ -36,13 +36,23 @@ impl TestDb {
         let full_url = database.full_url();
 
         // create_db(&conn_string, &db_name).await;
-        let mut pg_conn = PgConnection::connect(&conn_string).await.expect("Failed to connect to Postgres.");
-        pg_conn.execute(&*format!(r#"CREATE DATABASE "{}";"#, database.name)).await.expect("Failed to create database.");
+        let mut pg_conn = PgConnection::connect(&conn_string)
+            .await
+            .expect("Failed to connect to Postgres.");
+        pg_conn
+            .execute(&*format!(r#"CREATE DATABASE "{}";"#, database.name))
+            .await
+            .expect("Failed to create database.");
 
-        let db_pool = PgPool::connect(&full_url).await.expect("Failed to connect to database.");
+        let db_pool = PgPool::connect(&full_url)
+            .await
+            .expect("Failed to connect to database.");
         migrate_db(&db_pool).await;
 
-        debug!("Created & migrated new TestDb: {}", &settings.database.name());
+        debug!(
+            "Created & migrated new TestDb: {}",
+            &settings.database.name()
+        );
         Self {
             db_name: database.name(),
             db_pool,
@@ -68,7 +78,6 @@ impl Drop for TestDb {
     }
 }
 
-
 #[instrument(level = "debug")]
 pub async fn spawn_test_app() -> TestApp {
     Lazy::force(&TRACING);
@@ -80,12 +89,21 @@ pub async fn spawn_test_app() -> TestApp {
     let port = settings.app.port;
     let address = format!("http://{}:{}", settings.app.host, port);
 
-    let app = configure_app(test_db.pool(), settings).await.unwrap();
+    let app = configure_app(test_db.pool(), settings)
+        .await
+        .expect("Failed to configure app.");
 
     let _ = async_std::task::spawn(app.listen(address.clone()));
 
-    debug!("TestApp listening on {} with DB {}", &address, &test_db.db_name);
-    TestApp { address, test_db, port }
+    debug!(
+        "TestApp listening on {} with DB {}",
+        &address, &test_db.db_name
+    );
+    TestApp {
+        address,
+        test_db,
+        port,
+    }
 }
 
 // async fn create_db(pg_conn: &str, db_name: &str) {

@@ -14,6 +14,17 @@ docker exec -it fullstack_db bash
 psql -U postgres -d fullstack
 ```
 
+The program uses the `dotenv` crate to read the two env vars `DATABASE_URL` and
+`APP_SECRET` from a .env file.
+
+## Debugging
+To enter the docker container and have a look at the databases living inside:
+```
+docker exec -it fullstack_db bash
+
+psql -U postgres
+```
+
 ## Notes
 It's not possible to run all tests at the same time (`cargo test`) because of some kind
 of concurrency issue. Measures that have been taken to check the database for any
