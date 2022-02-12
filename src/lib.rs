@@ -1,26 +1,38 @@
-use chrono::prelude::*;
+use std::sync::Arc;
+
+use axum::body::Body;
+use axum::extract::Extension;
+use axum::handler::Handler;
+use axum::response::IntoResponse;
+use axum::routing::{get, post};
+use axum::{AddExtensionLayer, Router};
+use http::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
-use std::convert::TryFrom;
-use tide::http::headers::HeaderValue;
-use tide::http::StatusCode;
-use tide::security::{CorsMiddleware, Origin};
-use tide::{Request, Response};
+// use tower::layer::layer_fn;
+use tower::ServiceBuilder;
+// use tower_http::auth::AsyncRequireAuthorizationLayer;
+use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
 pub mod error;
+pub mod model;
 pub mod settings;
 pub mod telemetry;
 
 mod auth;
+mod database;
 mod endpoints;
+mod helpers;
 
-use endpoints::user;
+// use auth::middleware_ax::AuthMiddleware;
+use endpoints::user_ax;
 use error::*;
 use settings::Settings;
 
 pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 pub type ServiceResult<T = tide::Response, E = anyhow::Error> = std::result::Result<T, E>;
+pub type StateExtension = Extension<Arc<State>>;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JsonBody<T> {
@@ -33,75 +45,64 @@ impl<T> JsonBody<T> {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct RawUserData {
-    pub username: String,
-    pub password: String,
-}
-
-pub struct ValidUserData(RawUserData);
-
-impl TryFrom<RawUserData> for ValidUserData {
-    type Error = anyhow::Error;
-
-    fn try_from(value: RawUserData) -> Result<Self, Self::Error> {
-        // TODO: Add some validation logic.
-        let RawUserData { username, password } = value;
-
-        Ok(Self(RawUserData { username, password }))
-    }
-}
-
-#[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
-pub struct User {
-    pub id: Uuid,
-    pub username: String,
-    pub hashed_password: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
-pub struct UserData {
-    pub id: Uuid,
-    pub username: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct UserCreationData {
-    pub id: Uuid,
-    pub token: String,
-}
-
 #[derive(Clone, Debug)]
 pub struct State {
     pub db_pool: PgPool,
     pub settings: Settings,
 }
 
-pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<tide::Server<State>> {
+async fn health_check() -> &'static str {
+    "Hello, world!"
+}
 
-    let state = State { db_pool, settings };
-    let mut app = tide::with_state(state);
+async fn handle_404() -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, "nothing to see here")
+}
 
-    let cors = CorsMiddleware::new()
-        .allow_methods("GET, POST, PUT, OPTIONS".parse::<HeaderValue>().unwrap())
-        .allow_origin(Origin::from("*"))
-        .allow_credentials(false);
+pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<axum::Router> {
+    let state = Arc::new(State { db_pool, settings });
 
-    app.with(cors);
+    // let headers: Arc<[_]> = Arc::new([header::AUTHORIZATION]);
 
-    app.at("/").serve_dir("dist/")?;
-    app.at("/health-check")
-        .get(|_req: Request<State>| async move { Ok(Response::new(StatusCode::Ok)) });
-    app.at("/user").post(user::create_user);
-    app.at("/user/login").post(user::login);
+    let service = ServiceBuilder::new()
+        // .layer(layer_fn(|inner| AuthMiddleware { inner }))
+        .layer(AddExtensionLayer::new(state))
+        // .layer(RequireAuthorizationLayer::custom(AuthMiddleware))
+        .layer(TraceLayer::new_for_http().make_span_with(
+            |_req: &Request<Body>| tracing::debug_span!( "http-request", req_id = %Uuid::new_v4()),
+        ));
 
-    app.at("/user/:id")
-        .with(auth::authorize)
-        .get(user::get_user)
-        .put(user::update_user)
-        .delete(user::delete_user);
+    let app = Router::new()
+        // .route("/", get(root))
+        .route("/health-check", get(health_check))
+        .route("/user", post(user_ax::create))
+        .route("/user/login", post(user_ax::login))
+        .route("/user/login/x", post(user_ax::login))
+        .layer(service);
+
+    let app = app.fallback(handle_404.into_service());
 
     Ok(app)
+
+    // let state = State { db_pool, settings };
+    // let mut app = tide::with_state(state);
+    //
+    // let cors = CorsMiddleware::new()
+    //     .allow_methods("GET, POST, PUT, OPTIONS".parse::<HeaderValue>().unwrap())
+    //     .allow_origin(Origin::from("*"))
+    //     .allow_credentials(false);
+    //
+    // app.with(cors);
+    //
+    // app.at("/").serve_dir("dist/")?;
+    // app.at("/health-check")
+    //     .get(|_req: Request<State>| async move { Ok(Response::new(StatusCode::Ok)) });
+    // app.at("/user").post(user::create_user);
+    // app.at("/user/login").post(user::login);
+    //
+    // app.at("/user/:id")
+    //     .with(auth::authorize)
+    //     .get(user::get_user)
+    //     .put(user::update_user)
+    //     .delete(user::delete_user);
 }

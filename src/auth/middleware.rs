@@ -5,7 +5,7 @@ use tide::{Next, Request, Response, StatusCode};
 use tracing::{debug, error, instrument};
 
 use super::{Claims, Role, AUTHORIZATION, BEARER, SECRET};
-use crate::{ErrorKind, ServiceError, State};
+use crate::{ServiceError, State};
 
 type BoxedTideResult<'a> = Pin<Box<dyn Future<Output = tide::Result> + Send + 'a>>;
 
@@ -37,13 +37,13 @@ fn claims_from_request(req: &Request<State>, role: Role) -> Result<Claims, Servi
     let auth_header = match req.header(AUTHORIZATION) {
         Some(header) => header.as_str(),
         None => {
-            return Err(ServiceError::new(ErrorKind::TokenExtractionError));
+            return Err(ServiceError::TokenExtractionError);
         }
     };
 
     if !auth_header.starts_with(BEARER) {
         error!("Failed to extract token from header");
-        return Err(ServiceError::new(ErrorKind::TokenExtractionError));
+        return Err(ServiceError::TokenExtractionError);
     }
 
     let token = auth_header.trim_start_matches(BEARER);
@@ -57,7 +57,7 @@ fn claims_from_request(req: &Request<State>, role: Role) -> Result<Claims, Servi
 
     if role == Role::Admin && Role::from_str(&decoded.claims.role) != Role::Admin {
         error!("Role permissions not sufficient");
-        return Err(ServiceError::new(ErrorKind::NoPermissionError));
+        return Err(ServiceError::NoPermissionError);
     }
 
     Ok(decoded.claims)

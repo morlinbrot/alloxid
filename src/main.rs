@@ -4,9 +4,8 @@ use sqlx::postgres::PgPool;
 
 use fullstack::telemetry::{get_subscriber, init_subscriber};
 
-#[async_std::main]
+#[tokio::main]
 async fn main() -> Result<()> {
-
     let subscriber = get_subscriber("fullstack".into(), "debug".into());
     init_subscriber(subscriber);
 
@@ -18,7 +17,10 @@ async fn main() -> Result<()> {
     let app = configure_app(db_pool, settings).await?;
 
     println!("Server listening on {}", address);
-    app.listen(address).await?;
+    axum::Server::bind(&address.parse().expect("Failed to parse app address."))
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 
     Ok(())
 }

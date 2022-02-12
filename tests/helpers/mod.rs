@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use once_cell::sync::Lazy;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use tracing::{debug, instrument, trace};
@@ -7,7 +9,10 @@ use fullstack::settings::Settings;
 use fullstack::telemetry::{get_subscriber, init_subscriber};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
-    let subscriber = get_subscriber("fullstack-test".into(), "info,sqlx=warn".into());
+    let subscriber = get_subscriber(
+        "fullstack-test".into(),
+        "debug,sqlx=warn,fullstack=debug".into(),
+    );
     init_subscriber(subscriber);
 });
 
@@ -87,13 +92,21 @@ pub async fn spawn_test_app() -> TestApp {
     let test_db = TestDb::new(&settings).await;
 
     let port = settings.app.port;
-    let address = format!("http://{}:{}", settings.app.host, port);
+    // let address = format!("http://{}:{}", settings.app.host, port);
+    let address = SocketAddr::from(([127, 0, 0, 1], port as u16));
+    let address_str = format!("http://{}:{}", settings.app.host, port);
 
     let app = configure_app(test_db.pool(), settings)
         .await
         .expect("Failed to configure app.");
 
-    let _ = async_std::task::spawn(app.listen(address.clone()));
+    tokio::spawn(async move {
+        axum::Server::bind(&address)
+            .serve(app.into_make_service())
+            .await
+            .unwrap()
+    });
+
     // We make sure that the app is actually spun up before we run our tests.
     async_std::task::sleep(std::time::Duration::from_millis(100)).await;
 
@@ -102,7 +115,7 @@ pub async fn spawn_test_app() -> TestApp {
         &address, &test_db.db_name
     );
     TestApp {
-        address,
+        address: address_str,
         test_db,
         port,
     }

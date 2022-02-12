@@ -4,14 +4,12 @@ use chrono::prelude::*;
 use sqlx::PgPool;
 use std::convert::TryInto;
 use tide::{http::StatusCode, Request, Response};
-use tracing::{debug, debug_span, error, info, Instrument, instrument};
+use tracing::{debug, debug_span, error, info, instrument, Instrument};
 use uuid::Uuid;
 
-use crate::{
-    JsonBody, RawUserData, ServiceError, State, User, UserCreationData, UserData, ValidUserData
-};
-
 use crate::auth::UserId;
+use crate::model::user::{RawUserData, User, UserCreationData, UserData, ValidUserData};
+use crate::{JsonBody, ServiceError, State};
 
 #[instrument(level = "info", skip(req), fields(
     app_port = req.state().settings.app.port,
@@ -33,8 +31,12 @@ pub async fn create_user(mut req: Request<State>) -> tide::Result {
         err
     })?;
 
-    let user = insert_new_user(pool, valid_user_data, secret).instrument(debug_span!("insert_new_user")).await?;
-    let token = insert_auth_token(pool, &user.id).instrument(debug_span!("insert_auth_token")).await?;
+    let user = insert_new_user(pool, valid_user_data, secret)
+        .instrument(debug_span!("insert_new_user"))
+        .await?;
+    let token = insert_auth_token(pool, &user.id)
+        .instrument(debug_span!("insert_auth_token"))
+        .await?;
 
     let data = UserCreationData { token, id: user.id };
     let json = serde_json::to_string(&JsonBody::new(data))?;
@@ -58,7 +60,6 @@ async fn insert_new_user(
     user_data: ValidUserData,
     secret: &str,
 ) -> Result<User, sqlx::Error> {
-
     let id = Uuid::new_v4();
     let date = Utc::now();
     let secret = secret.to_string();
@@ -168,7 +169,7 @@ pub async fn login(mut req: Request<State>) -> tide::Result {
         Ok(row) => {
             debug!("Found matching user_id {}", &row.user_id);
             (row.user_id, row.hashed_password)
-        },
+        }
         Err(err) => match err {
             sqlx::Error::RowNotFound => {
                 error!("Err: {:?}", err);
@@ -247,13 +248,13 @@ pub async fn get_user(req: Request<State>) -> tide::Result {
             // Requested user doesn't exist, e.g. token must be illegal.
             sqlx::Error::RowNotFound => {
                 error!("Err: {:?}", err);
-                return Ok(Response::new(StatusCode::Forbidden))
-            },
+                return Ok(Response::new(StatusCode::Forbidden));
+            }
             // Any other sqlx error.
             _ => {
                 error!("Err: {:?}", err);
-                return Ok(Response::new(StatusCode::InternalServerError))
-            },
+                return Ok(Response::new(StatusCode::InternalServerError));
+            }
         },
         Ok(user) => {
             debug!("Found user id={} username={}", user.id, user.username);
@@ -261,7 +262,7 @@ pub async fn get_user(req: Request<State>) -> tide::Result {
                 id: user.id,
                 username: user.username,
             }
-        },
+        }
     };
 
     let json = serde_json::to_string(&JsonBody::new(user_data))?;

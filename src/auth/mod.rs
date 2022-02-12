@@ -5,9 +5,10 @@ use std::fmt;
 use uuid::Uuid;
 
 pub mod middleware;
+pub mod middleware_ax;
 pub(crate) use middleware::*;
 
-use crate::error::{ErrorKind, ServiceError};
+use crate::error::ServiceError;
 
 pub const AUTHORIZATION: &str = "Authorization";
 pub const BEARER: &str = "Bearer ";
@@ -75,5 +76,5 @@ pub fn create(user_id: UserId, role: &str) -> Result<String, ServiceError> {
     let header = Header::new(Algorithm::HS512);
 
     encode(&header, &claims, &EncodingKey::from_secret(SECRET))
-        .map_err(|_| ServiceError::new(ErrorKind::TokenCreationError))
+        .map_err(|_| ServiceError::TokenCreationError)
 }

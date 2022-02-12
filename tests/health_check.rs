@@ -1,7 +1,8 @@
 mod helpers;
 use helpers::spawn_test_app;
 
-#[async_std::test]
+#[ignore]
+#[tokio::test]
 async fn health_check() {
     let app = spawn_test_app().await;
 

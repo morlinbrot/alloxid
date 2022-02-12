@@ -1,80 +1,72 @@
 use std::fmt;
 
-#[derive(Debug)]
-pub enum ErrorKind {
-    ArgonauticaError(argonautica::ErrorKind),
-    InvalidInputError,
-    ParseError,
-    TokenCreationError,
-    InvalidTokenError,
-    TokenExtractionError,
-    NoPermissionError,
-}
+use axum::body;
+use axum::response::{IntoResponse, Response};
+use http::StatusCode;
 
 #[derive(Debug)]
-pub struct ServiceError {
-    msg: String,
-    kind: ErrorKind,
-    source: Option<&'static (dyn std::error::Error + 'static + Sync)>,
+pub enum ServiceError {
+    InvalidInputError,
+    InvalidTokenError,
+    NoPermissionError,
+    ParseError,
+    ParseUserDataError,
+    TokenCreationError,
+    TokenExtractionError,
+
+    ArgonauticaError(argonautica::Error),
+    SQLXError(sqlx::Error),
+    SerdeError(serde_json::Error),
+
+    WithStatusCode(StatusCode),
 }
 
 impl std::error::Error for ServiceError {}
 
-impl ServiceError {
-    pub fn new(kind: ErrorKind) -> Self {
-        let msg = match kind {
-            ErrorKind::NoPermissionError => "Permission denied.",
-            ErrorKind::TokenExtractionError => "No auth header found.",
-            ErrorKind::TokenCreationError => "Failed to encode token",
-            _ => "Unspecified Error occured.",
-        };
-
-        Self {
-            msg: msg.to_string(),
-            kind,
-            source: None,
-        }
-    }
-
-    pub fn from_str(_msg: &str) -> Self {
-        todo!()
-    }
-}
-
 impl fmt::Display for ServiceError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.kind {
-            ErrorKind::ArgonauticaError(argo_kind) => {
-                write!(
-                    f,
-                    "ServiceError::{:?}::{:?}: {}",
-                    self.kind, argo_kind, self.msg
-                )
-            }
-            _ => {
-                write!(f, "ServiceError::{:?}: {}", self.kind, self.msg)
-            }
-        }
+        let msg = match self {
+            Self::NoPermissionError => "Permission denied.".to_string(),
+            Self::TokenExtractionError => "No auth header found.".to_string(),
+            Self::TokenCreationError => "Failed to encode token".to_string(),
+            Self::ParseUserDataError => "Failed to parse user data".to_string(),
+            Self::SQLXError(err) => err.to_string(),
+            Self::SerdeError(err) => err.to_string(),
+            Self::ArgonauticaError(err) => err.to_string(),
+            _ => "Unspecified Error occured.".to_string(),
+        };
+
+        write!(f, "ServiceError::{:?}: {}", self, msg)
     }
 }
 
-impl Into<tide::Response> for ServiceError {
-    fn into(self) -> tide::Response {
-        tide::log::error!("{:?}", self.to_string());
+impl IntoResponse for ServiceError {
+    fn into_response(self) -> Response {
+        let status = match self {
+            ServiceError::WithStatusCode(status) => status,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        Response::builder()
+            .status(status)
+            .body(body::boxed(body::Full::from(self.to_string())))
+            .unwrap()
+    }
+}
 
-        match self.kind {
-            ErrorKind::InvalidTokenError => tide::Response::builder(403).build(),
-            _ => tide::Response::builder(500).build(),
-        }
+impl From<sqlx::Error> for ServiceError {
+    fn from(err: sqlx::Error) -> Self {
+        Self::SQLXError(err)
+    }
+}
+
+impl From<serde_json::Error> for ServiceError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::SerdeError(err)
     }
 }
 
 impl From<argonautica::Error> for ServiceError {
     fn from(err: argonautica::Error) -> Self {
-        Self {
-            kind: ErrorKind::ArgonauticaError(err.kind()),
-            msg: err.to_string(),
-            source: None,
-        }
+        Self::ArgonauticaError(err)
     }
 }
