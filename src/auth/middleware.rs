@@ -57,7 +57,7 @@ fn claims_from_request(req: &Request<State>, role: Role) -> Result<Claims, Servi
 
     if role == Role::Admin && Role::from_str(&decoded.claims.role) != Role::Admin {
         error!("Role permissions not sufficient");
-        return Err(ServiceError::NoPermissionError);
+        return Err(ServiceError::TokenPermissionError);
     }
 
     Ok(decoded.claims)

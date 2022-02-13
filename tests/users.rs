@@ -97,7 +97,7 @@ async fn create_user_and_login() {
 
 #[instrument]
 #[tokio::test]
-async fn create_user_with_malformatted_data_returns_400() {
+async fn create_user_with_malformatted_data_returns_422() {
     let app = spawn_test_app().await;
     info!(
         "create_user_and_login: app_port={} db_name={}",
@@ -119,7 +119,7 @@ async fn create_user_with_malformatted_data_returns_400() {
         .expect("Failed to send create user request.");
 
     // dbg!(&res.status());
-    assert_eq!(res.status(), 400);
+    assert_eq!(res.status(), 422);
 }
 
 // #[instrument]

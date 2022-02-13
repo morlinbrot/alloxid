@@ -1,72 +1,59 @@
-use std::fmt;
-
 use axum::body;
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, thiserror::Error)]
 pub enum ServiceError {
-    InvalidInputError,
-    InvalidTokenError,
-    NoPermissionError,
-    ParseError,
-    ParseUserDataError,
+    #[error("Failed to create token")]
     TokenCreationError,
+    #[error("Failed to extract token")]
     TokenExtractionError,
+    #[error("Insufficient permissions")]
+    TokenPermissionError,
 
-    ArgonauticaError(argonautica::Error),
-    SQLXError(sqlx::Error),
-    SerdeError(serde_json::Error),
+    #[error("Unauthorized")]
+    Unauthorized,
 
-    WithStatusCode(StatusCode),
-}
-
-impl std::error::Error for ServiceError {}
-
-impl fmt::Display for ServiceError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let msg = match self {
-            Self::NoPermissionError => "Permission denied.".to_string(),
-            Self::TokenExtractionError => "No auth header found.".to_string(),
-            Self::TokenCreationError => "Failed to encode token".to_string(),
-            Self::ParseUserDataError => "Failed to parse user data".to_string(),
-            Self::SQLXError(err) => err.to_string(),
-            Self::SerdeError(err) => err.to_string(),
-            Self::ArgonauticaError(err) => err.to_string(),
-            _ => "Unspecified Error occured.".to_string(),
-        };
-
-        write!(f, "ServiceError::{:?}: {}", self, msg)
-    }
+    #[error("Library error")]
+    LibError(String),
 }
 
 impl IntoResponse for ServiceError {
     fn into_response(self) -> Response {
         let status = match self {
-            ServiceError::WithStatusCode(status) => status,
+            ServiceError::Unauthorized => StatusCode::UNAUTHORIZED,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
+
+        let msg = self.to_string();
+
         Response::builder()
             .status(status)
-            .body(body::boxed(body::Full::from(self.to_string())))
+            .body(body::boxed(body::Full::from(msg)))
             .unwrap()
-    }
-}
-
-impl From<sqlx::Error> for ServiceError {
-    fn from(err: sqlx::Error) -> Self {
-        Self::SQLXError(err)
-    }
-}
-
-impl From<serde_json::Error> for ServiceError {
-    fn from(err: serde_json::Error) -> Self {
-        Self::SerdeError(err)
     }
 }
 
 impl From<argonautica::Error> for ServiceError {
     fn from(err: argonautica::Error) -> Self {
-        Self::ArgonauticaError(err)
+        Self::LibError(err.to_string())
+    }
+}
+
+impl From<config::ConfigError> for ServiceError {
+    fn from(err: config::ConfigError) -> Self {
+        Self::LibError(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for ServiceError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::LibError(err.to_string())
+    }
+}
+
+impl From<sqlx::Error> for ServiceError {
+    fn from(err: sqlx::Error) -> Self {
+        Self::LibError(err.to_string())
     }
 }

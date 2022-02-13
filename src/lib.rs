@@ -30,8 +30,8 @@ use endpoints::user_ax;
 use error::*;
 use settings::Settings;
 
-pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
-pub type ServiceResult<T = tide::Response, E = anyhow::Error> = std::result::Result<T, E>;
+pub type Result<T, E = ServiceError> = std::result::Result<T, E>;
+pub type ServiceResult<T = tide::Response, E = ServiceError> = std::result::Result<T, E>;
 pub type StateExtension = Extension<Arc<State>>;
 
 #[derive(Debug, Deserialize, Serialize)]

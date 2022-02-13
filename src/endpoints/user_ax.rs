@@ -66,6 +66,7 @@ pub(crate) async fn create(
             error!("Err: {:?}", err);
             err
         })?;
+
     let token = insert_auth_token(&pool, &user.id)
         .instrument(debug_span!("insert_auth_token"))
         .await
@@ -124,33 +125,19 @@ pub async fn login(
         Err(err) => match err {
             sqlx::Error::RowNotFound => {
                 error!("Err: {:?}", err);
-                let res = Response::builder()
-                    .status(StatusCode::UNAUTHORIZED)
-                    .body(Body::empty())
-                    .expect("Failed to create response.");
-                return Ok(res);
+                return Err(ServiceError::Unauthorized);
             }
             _ => {
                 error!("Err: {:?}", err);
-                // return Ok(Response::new(StatusCode::INTERNAL_SERVER_ERROR));
-                let res = Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(Body::empty())
-                    .expect("Failed to create response.");
-                return Ok(res);
+                return Err(err.into());
             }
         },
     };
 
     let is_valid = helpers::verify_password(&hashed_password, &password, secret)?;
-    debug!(is_valid);
 
     if !is_valid {
-        let res = Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .body(Body::empty())
-            .expect("Failed to create response.");
-        return Ok(res);
+        return Err(ServiceError::Unauthorized);
     }
 
     let query_token_span = debug_span!("query_token_span");
