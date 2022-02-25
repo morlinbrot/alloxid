@@ -11,6 +11,9 @@ pub enum ServiceError {
     #[error("Insufficient permissions")]
     TokenPermissionError,
 
+    #[error("Forbidden")]
+    Forbidden,
+
     #[error("Unauthorized")]
     Unauthorized,
 
@@ -22,6 +25,7 @@ impl IntoResponse for ServiceError {
     fn into_response(self) -> Response {
         let status = match self {
             ServiceError::Unauthorized => StatusCode::UNAUTHORIZED,
+            ServiceError::Forbidden => StatusCode::FORBIDDEN,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 

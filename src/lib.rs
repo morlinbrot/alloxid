@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::body::Body;
 use axum::extract::Extension;
 use axum::handler::Handler;
+use axum::middleware::from_fn;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{AddExtensionLayer, Router};
@@ -25,7 +26,6 @@ mod database;
 mod endpoints;
 mod helpers;
 
-// use auth::middleware_ax::AuthMiddleware;
 use endpoints::user_ax;
 use error::*;
 use settings::Settings;
@@ -66,8 +66,9 @@ pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<axum::
 
     let service = ServiceBuilder::new()
         // .layer(layer_fn(|inner| AuthMiddleware { inner }))
-        .layer(AddExtensionLayer::new(state))
         // .layer(RequireAuthorizationLayer::custom(AuthMiddleware))
+        // .layer(from_fn(authorize));
+        .layer(AddExtensionLayer::new(state))
         .layer(TraceLayer::new_for_http().make_span_with(
             |_req: &Request<Body>| tracing::debug_span!( "http-request", req_id = %Uuid::new_v4()),
         ));
@@ -77,7 +78,7 @@ pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<axum::
         .route("/health-check", get(health_check))
         .route("/user", post(user_ax::create))
         .route("/user/login", post(user_ax::login))
-        .route("/user/login/x", post(user_ax::login))
+        .route("/user/:id", get(user_ax::get_user))
         .layer(service);
 
     let app = app.fallback(handle_404.into_service());

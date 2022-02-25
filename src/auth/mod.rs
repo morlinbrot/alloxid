@@ -4,14 +4,12 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use uuid::Uuid;
 
-pub mod middleware;
-pub mod middleware_ax;
-pub(crate) use middleware::*;
+pub(crate) mod extractor;
+pub(crate) use extractor::*;
 
 use crate::error::ServiceError;
 
-pub const AUTHORIZATION: &str = "Authorization";
-pub const BEARER: &str = "Bearer ";
+pub const SCHEME_PREFIX: &str = "Bearer ";
 pub const SECRET: &[u8] = b"totally secret";
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]

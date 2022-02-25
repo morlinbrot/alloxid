@@ -1092,6 +1092,7 @@ dependencies = [
  "argonautica",
  "assert-json-diff",
  "async-std",
+ "async-trait",
  "axum",
  "axum-macros",
  "chrono",

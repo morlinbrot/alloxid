@@ -4,40 +4,12 @@ use axum_macros::debug_handler;
 use http::{Response, StatusCode};
 use tracing::{debug, debug_span, error, info, Instrument};
 
+use crate::auth::AuthUser;
 use crate::database::{insert_auth_token, insert_new_user};
 use crate::error::ServiceError;
-use crate::{helpers, StateExtension};
-// use crate::auth::UserId;
-use crate::model::user::{RawUserData, UserCreationData, ValidUserData};
+use crate::model::user::{RawUserData, User, UserCreationData, UserData, ValidUserData};
 use crate::JsonBody;
-
-// https://github.com/launchbadge/realworld-axum-sqlx/blob/main/src/http/extractor.rs
-//
-// use crate::auth::AUTHORIZATION;
-// use axum::async_trait;
-// use axum::extract::{Extension, FromRequest, Json, RequestParts};
-// #[async_trait]
-// impl<B> FromRequest<B> for RawUserData
-// where
-//     B: Send, // required by `async_trait`
-// {
-//     type Rejection = ServiceError;
-//
-//     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-//         let ctx: Extension<ApiContext> = Extension::from_request(req)
-//             .await
-//             .expect("BUG: ApiContext was not added as an extension");
-//
-//         // Get the value of the `Authorization` header, if it was sent at all.
-//         let auth_header = req
-//             .headers()
-//             .ok_or(ServiceError::WithStatusCode(StatusCode::UNAUTHORIZED))?
-//             .get(AUTHORIZATION)
-//             .ok_or(ServiceError::WithStatusCode(StatusCode::UNAUTHORIZED))?;
-//
-//         Self::from_authorization(&ctx, auth_header)
-//     }
-// }
+use crate::{helpers, StateExtension};
 
 #[debug_handler]
 pub(crate) async fn create(
@@ -50,7 +22,7 @@ pub(crate) async fn create(
     let secret = settings.app.secret.as_ref();
 
     debug!(
-        "Handler called, port={} db_name={}",
+        "create called, port={} db_name={}",
         settings.app.port, settings.database.name,
     );
 
@@ -101,7 +73,7 @@ pub async fn login(
     let secret = settings.app.secret.as_ref();
 
     debug!(
-        "Handler called, port={} db_name={}",
+        "login called, port={} db_name={}",
         settings.app.port, settings.database.name,
     );
 
@@ -116,6 +88,8 @@ pub async fn login(
     .fetch_one(&pool)
     .instrument(query_user_span)
     .await;
+
+    debug!("User row found: {:?}", &row);
 
     let (user_id, hashed_password) = match row {
         Ok(row) => {
@@ -157,5 +131,64 @@ pub async fn login(
     let res = Response::new(Body::from(json));
 
     info!("Successfully logged in user_id={}", user_id);
+    Ok(res)
+}
+
+#[debug_handler]
+pub(crate) async fn get_user(
+    state: StateExtension,
+    AuthUser { user_id }: AuthUser,
+) -> Result<Response<Body>, ServiceError> {
+    let pool = state.db_pool.clone();
+    let settings = state.settings.clone();
+
+    debug!(
+        "get_user called, port={} db_name={} user_id={:?}",
+        settings.app.port, settings.database.name, user_id,
+    );
+
+    let user_id = user_id;
+
+    let query_span = debug_span!("query_span");
+    let user = sqlx::query_as!(
+        User,
+        r#"
+            select * from users where id = $1;
+        "#,
+        user_id.take(),
+    )
+    .fetch_one(&pool)
+    .instrument(query_span)
+    .await;
+
+    let user_data = match user {
+        Ok(user) => {
+            debug!("Found user id={} username={}", user.id, user.username);
+            UserData {
+                id: user.id,
+                username: user.username,
+            }
+        }
+        Err(err) => match err {
+            // Requested user doesn't exist, e.g. token must be illegal.
+            sqlx::Error::RowNotFound => {
+                error!("Err: {:?}", err);
+                return Err(ServiceError::Forbidden);
+            }
+            _ => {
+                error!("Err: {:?}", err);
+                return Err(err.into());
+            }
+        },
+    };
+
+    let json = serde_json::to_vec(&JsonBody::new(user_data))?;
+
+    let res = Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from(json))
+        .expect("Failed to create response.");
+
+    info!("Successfully got user_id={:?}", user_id);
     Ok(res)
 }

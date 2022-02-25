@@ -18,7 +18,8 @@ doctest = false
 anyhow = "1.0.37"
 argonautica = "0.2.0"
 async-std = { version = "1.8.0", features = ["attributes", "unstable", "tokio1"] }
-axum = "0.4.5"
+async-trait = "0.1.52"
+axum = "0.4.6"
 axum-macros = "0.1.0"
 config = "0.10.1"
 chrono = { version = "0.4.19", features = ["serde"] }
