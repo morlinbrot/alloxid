@@ -1,11 +1,10 @@
 // use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 // use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
-use tide::Request;
-use tracing_subscriber::EnvFilter;
 use tracing_log::LogTracer;
+use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
 
-use crate::State;
+use crate::StateExtension;
 
 pub struct LogInfo {
     app_port: usize,
@@ -14,15 +13,23 @@ pub struct LogInfo {
 }
 
 impl LogInfo {
-    pub fn from_req(req: &Request<State>) -> Self {
+    pub fn from_req(state: StateExtension) -> Self {
         let req_id = Uuid::new_v4();
-        Self { app_port: req.state().settings.app.port, req_id, db_name: req.state().settings.database.name.clone() }
+        Self {
+            app_port: state.settings.app.port,
+            req_id,
+            db_name: state.settings.database.name.clone(),
+        }
     }
 }
 
 impl std::fmt::Display for LogInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "LogInfo{{app_port={} req_id={} db_name={}}}", self.app_port, self.req_id, self.db_name)
+        write!(
+            f,
+            "LogInfo{{app_port={} req_id={} db_name={}}}",
+            self.app_port, self.req_id, self.db_name
+        )
     }
 }
 
@@ -31,7 +38,8 @@ pub fn get_subscriber(_name: String, env_filter: String) -> impl tracing::Subscr
     // Overwrite with something like
     // RUST_LOG="debug,tide=warn,sqlx=warn,surf=warn,isahc=off"
     // for debugging.
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(env_filter));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(env_filter));
 
     // We configure a logger that resembles the default env_logger.
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -53,4 +61,3 @@ pub fn init_subscriber(subscriber: impl tracing::Subscriber + Send + Sync) {
 
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set subscriber");
 }
-

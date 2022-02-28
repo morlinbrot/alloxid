@@ -6,18 +6,18 @@ use tracing::{debug, debug_span, error, Instrument};
 use uuid::Uuid;
 
 use crate::auth::UserId;
-use crate::model::user::{RawUserData, User, ValidUserData};
+use crate::model::user::{UserCreateRaw, UserEntry, ValidUserData};
 
-pub async fn insert_new_user(
+pub(crate) async fn insert_new_user(
     pool: &PgPool,
     user_data: ValidUserData,
     secret: &str,
-) -> Result<User, sqlx::Error> {
+) -> Result<UserEntry, sqlx::Error> {
     let id = Uuid::new_v4();
     let date = Utc::now();
     let secret = secret.to_string();
 
-    let ValidUserData(RawUserData { username, password }) = user_data;
+    let ValidUserData(UserCreateRaw { username, password }) = user_data;
 
     // Since the hashing actually takes some time, we're offloading it onto a dedicated thread pool for blocking tasks.
     let hash = task::spawn_blocking(move || {
@@ -37,7 +37,7 @@ pub async fn insert_new_user(
 
     let user_span = debug_span!("user_span");
     let res = sqlx::query_as!(
-        User,
+        UserEntry,
         r#"
             INSERT INTO users (
                 id,
@@ -69,7 +69,7 @@ pub async fn insert_new_user(
 pub async fn insert_auth_token(pool: &PgPool, user_id: &Uuid) -> Result<String, sqlx::Error> {
     let token_id = Uuid::new_v4();
 
-    let token = crate::auth::create(UserId::new(*user_id), "User").unwrap();
+    let token = crate::auth::create(UserId::new(*user_id), crate::auth::Role::User).unwrap();
 
     let token_span = debug_span!("token_span");
     let record = sqlx::query!(

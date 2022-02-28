@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tracing::{info, instrument};
 
-use fullstack::model::user::{UserCreationData, UserData};
+use fullstack::model::user::{UserCreatedData, UserData};
 use fullstack::JsonBody;
 
 mod helpers;
@@ -35,6 +35,7 @@ async fn create_user(app: &TestApp) -> (reqwest::Response, TestUser) {
     )
 }
 
+// #[ignore]
 #[instrument]
 #[tokio::test]
 async fn create_user_and_login() {
@@ -52,7 +53,7 @@ async fn create_user_and_login() {
     // dbg!(&res.headers().get("Location"));
     assert!(res.headers().get("Location").is_some());
 
-    let body: JsonBody<UserCreationData> = res.json().await.unwrap();
+    let body: JsonBody<UserCreatedData> = res.json().await.unwrap();
     let user = body.data;
     dbg!(&user);
     assert!(!user.id.is_nil());
@@ -95,6 +96,7 @@ async fn create_user_and_login() {
     assert_eq!(user.username, user_data.username);
 }
 
+// #[ignore]
 #[instrument]
 #[tokio::test]
 async fn create_user_with_malformatted_data_returns_422() {
@@ -122,8 +124,8 @@ async fn create_user_with_malformatted_data_returns_422() {
     assert_eq!(res.status(), 422);
 }
 
-#[instrument]
 // #[ignore]
+#[instrument]
 #[tokio::test]
 async fn login_with_illegal_data_returns_401() {
     let app = spawn_test_app().await;
@@ -170,7 +172,7 @@ async fn get_user_without_token_returns_401() {
     );
 
     let (res, _) = create_user(&app).await;
-    let body: JsonBody<UserCreationData> = res.json().await.unwrap();
+    let body: JsonBody<UserCreatedData> = res.json().await.unwrap();
     let user = body.data;
 
     let route = format!("/user/{}", user.id);
@@ -193,7 +195,7 @@ async fn get_user_with_malformed_token_returns_401() {
     );
 
     let (res, _) = create_user(&app).await;
-    let body: JsonBody<UserCreationData> = res.json().await.unwrap();
+    let body: JsonBody<UserCreatedData> = res.json().await.unwrap();
     let user = body.data;
 
     let route = format!("/user/{}", user.id);
@@ -215,77 +217,77 @@ async fn get_user_with_malformed_token_returns_401() {
 //     todo!()
 // }
 
-// #[instrument]
-// // #[ignore]
-// #[tokio::test]
-// async fn put_user_data_returns_200() {
-//     let app = spawn_test_app().await;
-//     info!(
-//         "put_user_data_returns_200: app_port={} db_name={}",
-//         &app.port, &app.test_db.db_name
-//     );
-//
-//     let (res, _) = create_user(&app).await;
-//     let body: JsonBody<UserCreationData> = res.json().await.unwrap();
-//     let user = body.data;
-//     let token = user.token;
-//
-//     let route = format!("/user/{}", user.id);
-//
-//     let new_username = "my-new-username";
-//     let json = serde_json::json!({ "username": new_username });
-//
-//     let client = reqwest::Client::new();
-//     let res = client
-//         .put(format!("{}{}", app.address, &route))
-//         .header("Authorization", format!("Bearer {}", token))
-//         .json(&json)
-//         .send()
-//         .await
-//         .expect(&format!("Failed to execute PUT request at {}", &route));
-//     dbg!(&res);
-//     assert_eq!(res.status(), 200);
-//
-//     let body: JsonBody<UserData> = res.json().await.unwrap();
-//     let user = body.data;
-//     dbg!(&user);
-//     assert_eq!(user.username, new_username);
-// }
-//
-// #[instrument]
-// // #[ignore]
-// #[tokio::test]
-// async fn delete_user_returns_200_then_403() {
-//     let app = spawn_test_app().await;
-//     info!(
-//         "delete_user_returns_200_then_403: app_port={} db_name={}",
-//         &app.port, &app.test_db.db_name
-//     );
-//
-//     let (res, _) = create_user(&app).await;
-//     let body: JsonBody<UserCreationData> = res.json().await.unwrap();
-//     let user = body.data;
-//     let token = user.token;
-//
-//     let route = format!("/user/{}", user.id);
-//
-//     let client = reqwest::Client::new();
-//     let res = client
-//         .delete(format!("{}{}", app.address, &route))
-//         .header("Authorization", format!("Bearer {}", token))
-//         .send()
-//         .await
-//         .expect(&format!("Failed to execute DELETE request at {}", &route));
-//     dbg!(&res);
-//     assert_eq!(res.status(), 200);
-//
-//     // Trying to retrieve the user after deletion should return 403.
-//     let res = client
-//         .get(format!("{}{}", app.address, &route))
-//         .header("Authorization", format!("Bearer {}", token))
-//         .send()
-//         .await
-//         .expect(&format!("Failed to execute GET request at {}", &route));
-//     dbg!(&res);
-//     assert_eq!(res.status(), 403);
-// }
+// #[ignore]
+#[instrument]
+#[tokio::test]
+async fn put_user_data_returns_200() {
+    let app = spawn_test_app().await;
+    info!(
+        "put_user_data_returns_200: app_port={} db_name={}",
+        &app.port, &app.test_db.db_name
+    );
+
+    let (res, _) = create_user(&app).await;
+    let body: JsonBody<UserCreatedData> = res.json().await.unwrap();
+    let user = body.data;
+    let token = user.token;
+
+    let route = format!("/user/{}", user.id);
+
+    let new_username = "my-new-username";
+    let json = serde_json::json!({ "username": new_username });
+
+    let client = reqwest::Client::new();
+    let res = client
+        .put(format!("{}{}", app.address, &route))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&json)
+        .send()
+        .await
+        .expect(&format!("Failed to execute PUT request at {}", &route));
+    dbg!(&res);
+    assert_eq!(res.status(), 200);
+
+    let body: JsonBody<UserData> = res.json().await.unwrap();
+    let user = body.data;
+    dbg!(&user);
+    assert_eq!(user.username, new_username);
+}
+
+// #[ignore]
+#[instrument]
+#[tokio::test]
+async fn delete_user_returns_200_then_403() {
+    let app = spawn_test_app().await;
+    info!(
+        "delete_user_returns_200_then_403: app_port={} db_name={}",
+        &app.port, &app.test_db.db_name
+    );
+
+    let (res, _) = create_user(&app).await;
+    let body: JsonBody<UserCreatedData> = res.json().await.unwrap();
+    let user = body.data;
+    let token = user.token;
+
+    let route = format!("/user/{}", user.id);
+
+    let client = reqwest::Client::new();
+    let res = client
+        .delete(format!("{}{}", app.address, &route))
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .expect(&format!("Failed to execute DELETE request at {}", &route));
+    dbg!(&res);
+    assert_eq!(res.status(), 200);
+
+    // Trying to retrieve the user after deletion should return 403.
+    let res = client
+        .get(format!("{}{}", app.address, &route))
+        .header("Authorization", format!("Bearer {}", token))
+        .send()
+        .await
+        .expect(&format!("Failed to execute GET request at {}", &route));
+    dbg!(&res);
+    assert_eq!(res.status(), 403);
+}

@@ -4,28 +4,37 @@ use uuid::Uuid;
 
 use crate::error::ServiceError;
 
+// Input to the create endpoint.
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RawUserData {
+pub struct UserCreateRaw {
     pub username: String,
     pub password: String,
 }
 
-// Newtype pattern.
-pub struct ValidUserData(pub RawUserData);
+// Returned by the create endpoint.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UserCreatedData {
+    pub id: Uuid,
+    pub token: String,
+}
 
-impl TryFrom<RawUserData> for ValidUserData {
+// Newtype pattern.
+pub struct ValidUserData(pub UserCreateRaw);
+
+impl TryFrom<UserCreateRaw> for ValidUserData {
     type Error = ServiceError;
 
-    fn try_from(value: RawUserData) -> Result<Self, Self::Error> {
+    fn try_from(value: UserCreateRaw) -> Result<Self, Self::Error> {
         // TODO: Add some validation logic.
-        let RawUserData { username, password } = value;
+        let UserCreateRaw { username, password } = value;
 
-        Ok(Self(RawUserData { username, password }))
+        Ok(Self(UserCreateRaw { username, password }))
     }
 }
 
+// The full user as it is stored in the db.
 #[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
-pub struct User {
+pub(crate) struct UserEntry {
     pub id: Uuid,
     pub username: String,
     pub hashed_password: String,
@@ -33,14 +42,15 @@ pub struct User {
     pub updated_at: DateTime<Utc>,
 }
 
+// The public user data.
 #[derive(sqlx::FromRow, Debug, Deserialize, Serialize)]
 pub struct UserData {
     pub id: Uuid,
     pub username: String,
 }
 
+// Input to the update endpoint.
 #[derive(Debug, Deserialize, Serialize)]
-pub struct UserCreationData {
-    pub id: Uuid,
-    pub token: String,
+pub struct UserUpdateRaw {
+    pub username: String,
 }

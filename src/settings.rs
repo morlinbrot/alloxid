@@ -1,8 +1,8 @@
 use config::{Config, ConfigError, File};
 use dotenv;
-use serde::Deserialize;
 use names::Generator;
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
+use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Settings {
@@ -50,7 +50,9 @@ impl Settings {
         let mut settings = Settings::new()?;
 
         let mut generator = Generator::default();
-        let name = generator.next().expect("Failed to generate random db name.");
+        let name = generator
+            .next()
+            .expect("Failed to generate random db name.");
         let db_name = format!("{}-{}", settings.database.name, name);
         settings.database.name = db_name;
 
