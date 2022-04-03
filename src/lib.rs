@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use axum::body::Body;
-use axum::extract::Extension;
 use axum::handler::Handler;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
-use axum::{AddExtensionLayer, Router};
+use axum::{Extension, Router};
 use http::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
@@ -58,9 +57,10 @@ async fn handle_404() -> impl IntoResponse {
 pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<axum::Router> {
     let state = Arc::new(State { db_pool, settings });
 
-    let service = ServiceBuilder::new()
-        .layer(AddExtensionLayer::new(state))
-        .layer(TraceLayer::new_for_http().make_span_with(
+    let service =
+        ServiceBuilder::new()
+            .layer(Extension(state))
+            .layer(TraceLayer::new_for_http().make_span_with(
             |_req: &Request<Body>| tracing::debug_span!( "http-request", req_id = %Uuid::new_v4()),
         ));
 

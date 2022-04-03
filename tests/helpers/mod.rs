@@ -11,7 +11,8 @@ use fullstack::telemetry::{get_subscriber, init_subscriber};
 static TRACING: Lazy<()> = Lazy::new(|| {
     let subscriber = get_subscriber(
         "fullstack-test".into(),
-        "debug,sqlx=warn,fullstack=debug".into(),
+        // Set the desired debug level for testing here.
+        "warn,sqlx=warn,fullstack=warn".into(),
     );
     init_subscriber(subscriber);
 });

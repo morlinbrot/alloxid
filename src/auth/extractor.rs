@@ -64,7 +64,7 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let auth_header = req
             .headers()
-            .ok_or(ServiceError::Unauthorized)?
+            //.ok_or(ServiceError::Unauthorized)?
             .get(AUTHORIZATION)
             .ok_or(ServiceError::Unauthorized)?;
 
