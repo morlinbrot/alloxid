@@ -42,17 +42,15 @@ pub fn get_subscriber(_name: String, env_filter: String) -> impl tracing::Subscr
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(env_filter));
 
     // We configure a logger that resembles the default env_logger.
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+    tracing_subscriber::FmtSubscriber::builder()
         .with_env_filter(env_filter)
-        .finish();
+        .finish()
 
     // let formatting_layer = BunyanFormattingLayer::new(name, std::io::stdout);
     // let subscriber = Registry::default()
     //     .with(env_filter)
     //     .with(JsonStorageLayer)
     //     .with(formatting_layer);
-
-    subscriber
 }
 
 pub fn init_subscriber(subscriber: impl tracing::Subscriber + Send + Sync) {

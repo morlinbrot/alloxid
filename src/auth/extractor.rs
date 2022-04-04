@@ -35,7 +35,7 @@ impl AuthUser {
         let token = auth_header.trim_start_matches(SCHEME_PREFIX);
 
         let decoded = decode::<Claims>(
-            &token,
+            token,
             &DecodingKey::from_secret(SECRET),
             &Validation::new(Algorithm::HS512),
         )
