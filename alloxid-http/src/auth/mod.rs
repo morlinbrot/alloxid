@@ -4,13 +4,12 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use uuid::Uuid;
 
-pub mod middleware;
-pub(crate) use middleware::*;
+pub(crate) mod extractor;
+pub(crate) use extractor::*;
 
-use crate::error::{ErrorKind, ServiceError};
+use crate::error::ServiceError;
 
-pub const AUTHORIZATION: &str = "Authorization";
-pub const BEARER: &str = "Bearer ";
+pub const SCHEME_PREFIX: &str = "Bearer ";
 pub const SECRET: &[u8] = b"totally secret";
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -60,7 +59,7 @@ impl fmt::Display for Role {
     }
 }
 
-pub fn create(user_id: UserId, role: &str) -> Result<String, ServiceError> {
+pub fn create(user_id: UserId, role: Role) -> Result<String, ServiceError> {
     let exp = Utc::now()
         .checked_add_signed(chrono::Duration::seconds(60))
         .expect("Failed to create valid timestamp")
@@ -75,5 +74,5 @@ pub fn create(user_id: UserId, role: &str) -> Result<String, ServiceError> {
     let header = Header::new(Algorithm::HS512);
 
     encode(&header, &claims, &EncodingKey::from_secret(SECRET))
-        .map_err(|_| ServiceError::new(ErrorKind::TokenCreationError))
+        .map_err(|_| ServiceError::TokenCreationError)
 }

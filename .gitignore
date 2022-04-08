@@ -1,2 +1,4 @@
-/target
-.env
+**/target
+**/*.env
+**/DS_Store
+**/dist
