@@ -98,6 +98,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "alloxid"
+version = "0.1.0"
+dependencies = [
+ "argonautica",
+ "async-std",
+ "async-trait",
+ "axum",
+ "axum-macros",
+ "chrono",
+ "config",
+ "dotenv",
+ "futures 0.3.17",
+ "futures-util",
+ "http",
+ "http-types",
+ "jsonwebtoken",
+ "names",
+ "once_cell",
+ "rand 0.8.4",
+ "reqwest",
+ "serde 1.0.130",
+ "serde_json",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-bunyan-formatter",
+ "tracing-futures",
+ "tracing-log",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -916,42 +952,6 @@ name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
-
-[[package]]
-name = "fullstack"
-version = "0.1.0"
-dependencies = [
- "argonautica",
- "async-std",
- "async-trait",
- "axum",
- "axum-macros",
- "chrono",
- "config",
- "dotenv",
- "futures 0.3.17",
- "futures-util",
- "http",
- "http-types",
- "jsonwebtoken",
- "names",
- "once_cell",
- "rand 0.8.4",
- "reqwest",
- "serde 1.0.130",
- "serde_json",
- "sqlx",
- "thiserror",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "tracing-bunyan-formatter",
- "tracing-futures",
- "tracing-log",
- "tracing-subscriber",
- "uuid",
-]
 
 [[package]]
 name = "futures"

@@ -8,13 +8,13 @@ DB_HOST="${POSTGRES_HOST:=localhost}"
 DB_PORT="${POSTGRES_PORT:=54321}"
 DB_USER="${POSTGRES_USER:=postgres}"
 DB_PASSWORD="${POSTGRES_PASSWORD:=password}"
-DB_NAME="${POSTGRES_DB:=fullstack}"
+DB_NAME="${POSTGRES_DB:=alloxid}"
 
 # Allow to skip spinning up a docker container if one is already running.
 if [[ -z "${SKIP_DOCKER}" ]]
 then
 docker run \
-    --name fullstack_db \
+    --name alloxid_db \
     -e POSTGRES_USER=${DB_USER} \
     -e POSTGRES_PASSWORD=${DB_PASSWORD} \
     -e POSTGRES_DB=${DB_NAME} \

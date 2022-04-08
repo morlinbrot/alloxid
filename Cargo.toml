@@ -1,7 +1,7 @@
 [package]
-name = "fullstack"
+name = "alloxid"
 version = "0.1.0"
-authors = ["synul <synul@mailbox.org>"]
+authors = ["morlinbrot <morlinbrot@mailbox.org>"]
 edition = "2021"
 
 [[bin]]

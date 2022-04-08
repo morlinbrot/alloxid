@@ -1,12 +1,12 @@
-use fullstack::settings::Settings;
-use fullstack::{configure_app, Result};
+use alloxid::settings::Settings;
+use alloxid::{configure_app, Result};
 use sqlx::postgres::PgPool;
 
-use fullstack::telemetry::{get_subscriber, init_subscriber};
+use alloxid::telemetry::{get_subscriber, init_subscriber};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let subscriber = get_subscriber("fullstack".into(), "debug".into());
+    let subscriber = get_subscriber("alloxid".into(), "debug".into());
     init_subscriber(subscriber);
 
     let settings = Settings::new()?;

@@ -51,7 +51,12 @@ async fn health_check() -> &'static str {
 }
 
 async fn handle_404() -> impl IntoResponse {
-    (StatusCode::NOT_FOUND, "Nothing to see here")
+    (StatusCode::NOT_FOUND, r#"Nothing to see here.
+
+Navigate to /health-check to receive a 200 response.
+
+Run tests to see the app in action.
+"#)
 }
 
 pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<axum::Router> {

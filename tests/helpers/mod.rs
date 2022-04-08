@@ -4,15 +4,15 @@ use once_cell::sync::Lazy;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use tracing::{debug, instrument, trace};
 
-use fullstack::configure_app;
-use fullstack::settings::Settings;
-use fullstack::telemetry::{get_subscriber, init_subscriber};
+use alloxid::configure_app;
+use alloxid::settings::Settings;
+use alloxid::telemetry::{get_subscriber, init_subscriber};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
     let subscriber = get_subscriber(
-        "fullstack-test".into(),
+        "alloxid-test".into(),
         // Set the desired debug level for testing here.
-        "warn,sqlx=warn,fullstack=warn".into(),
+        "warn,sqlx=warn,alloxid=warn".into(),
     );
     init_subscriber(subscriber);
 });
@@ -93,7 +93,6 @@ pub async fn spawn_test_app() -> TestApp {
     let test_db = TestDb::new(&settings).await;
 
     let port = settings.app.port;
-    // let address = format!("http://{}:{}", settings.app.host, port);
     let address = SocketAddr::from(([127, 0, 0, 1], port as u16));
     let address_str = format!("http://{}:{}", settings.app.host, port);
 
@@ -109,6 +108,7 @@ pub async fn spawn_test_app() -> TestApp {
     });
 
     // We make sure that the app is actually spun up before we run our tests.
+    // TODO: Find a better solution to this.
     async_std::task::sleep(std::time::Duration::from_millis(100)).await;
 
     debug!(
