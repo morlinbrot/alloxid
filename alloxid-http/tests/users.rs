@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tracing::{info, instrument};
 
-use alloxid::model::user::{UserCreatedData, UserData};
-use alloxid::JsonBody;
+use alloxid_http::model::user::{UserCreatedData, UserData};
+use alloxid_http::JsonBody;
 
 mod helpers;
 use helpers::{spawn_test_app, TestApp};

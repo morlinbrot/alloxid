@@ -3,6 +3,7 @@ use dotenv;
 use names::Generator;
 use rand::{thread_rng, Rng};
 use serde::Deserialize;
+use std::path::Path;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Settings {
@@ -30,10 +31,18 @@ impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
         let mut config = Config::new();
 
-        config.merge(File::with_name("config/default"))?;
+        let mut cfg_path = std::env::current_dir().expect("Failed to read cwd");
+
+        // We don't know if we're being run from the workspace or the crate root.
+        let crate_root = Path::new("alloxid-http");
+        if !cfg_path.ends_with(&crate_root) {
+            cfg_path = Path::new(&cfg_path).join(crate_root);
+        }
+
+        config.merge(File::from(cfg_path.join("config/default")))?;
 
         #[cfg(test)]
-        config.merge(File::with_name("config/test"))?;
+        config.merge(File::from(cfg_path.join("config/test")))?;
 
         // Load .env file into environment, if present.
         dotenv::dotenv().expect("Failed to load .env file");

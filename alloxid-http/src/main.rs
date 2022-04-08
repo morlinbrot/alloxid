@@ -1,8 +1,8 @@
-use alloxid::settings::Settings;
-use alloxid::{configure_app, Result};
+use alloxid_http::settings::Settings;
+use alloxid_http::{configure_app, Result};
 use sqlx::postgres::PgPool;
 
-use alloxid::telemetry::{get_subscriber, init_subscriber};
+use alloxid_http::telemetry::{get_subscriber, init_subscriber};
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -4,9 +4,9 @@ use once_cell::sync::Lazy;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use tracing::{debug, instrument, trace};
 
-use alloxid::configure_app;
-use alloxid::settings::Settings;
-use alloxid::telemetry::{get_subscriber, init_subscriber};
+use alloxid_http::configure_app;
+use alloxid_http::settings::Settings;
+use alloxid_http::telemetry::{get_subscriber, init_subscriber};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
     let subscriber = get_subscriber(
