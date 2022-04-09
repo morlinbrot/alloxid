@@ -5,10 +5,11 @@ use axum::handler::Handler;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Extension, Router};
-use http::{Request, StatusCode};
+use http::{Method, Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
 use tower::ServiceBuilder;
+use tower_http::cors::{CorsLayer, Origin};
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
@@ -47,27 +48,40 @@ pub struct State {
 }
 
 async fn health_check() -> &'static str {
-    "Hello, world!"
+    "Hello, healthy world!"
 }
 
 async fn handle_404() -> impl IntoResponse {
-    (StatusCode::NOT_FOUND, r#"Nothing to see here.
+    (
+        StatusCode::NOT_FOUND,
+        r#"Nothing to see here.
 
 Navigate to /health-check to receive a 200 response.
 
 Run tests to see the app in action.
-"#)
+"#,
+    )
 }
 
 pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<axum::Router> {
+    let cors = CorsLayer::new()
+        .allow_origin(Origin::exact(
+            settings
+                .app
+                .cors_url
+                .parse()
+                .expect("Failed to parse frontend url"),
+        ))
+        .allow_methods(vec![Method::GET, Method::POST]);
+
     let state = Arc::new(State { db_pool, settings });
 
-    let service =
-        ServiceBuilder::new()
-            .layer(Extension(state))
-            .layer(TraceLayer::new_for_http().make_span_with(
+    let service = ServiceBuilder::new()
+        .layer(Extension(state))
+        .layer(TraceLayer::new_for_http().make_span_with(
             |_req: &Request<Body>| tracing::debug_span!( "http-request", req_id = %Uuid::new_v4()),
-        ));
+        ))
+        .layer(cors);
 
     let app = Router::new()
         // .route("/", get(root))

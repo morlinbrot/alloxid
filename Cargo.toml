@@ -1,6 +1,6 @@
 [workspace]
 default-members = ["alloxid-http"]
 members = [
-    #"alloxid-front",
+    "alloxid-front",
     "alloxid-http",
 ]

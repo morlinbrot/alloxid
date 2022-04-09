@@ -13,6 +13,7 @@ pub struct Settings {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct App {
+    pub cors_url: String,
     pub host: String,
     pub port: usize,
     pub(crate) secret: String,
@@ -39,7 +40,10 @@ impl Settings {
             cfg_path = Path::new(&cfg_path).join(crate_root);
         }
 
-        config.merge(File::from(cfg_path.join("config/default")))?;
+        config.merge(File::from(cfg_path.join("config/prod")))?;
+
+        #[cfg(debug_assertions)]
+        config.merge(File::from(cfg_path.join("config/dev")))?;
 
         #[cfg(test)]
         config.merge(File::from(cfg_path.join("config/test")))?;
@@ -49,8 +53,11 @@ impl Settings {
 
         // Set the app secret from environment. (Unfortunately `config` doesn't support
         // setting vars into nested parts of the config, e.g. `Settings.app`.
-        let secret = std::env::var("APP_SECRET").expect("APP_SECRET must be set.");
+        let secret = std::env::var("APP_SECRET").expect("Failed to read APP_SECRET");
         config.set("app.secret", secret)?;
+
+        let db_pw = std::env::var("DATABASE_PASSWORD").expect("Failed to read DATABASE_PASSWORD");
+        config.set("database.password", db_pw)?;
 
         config.try_into()
     }

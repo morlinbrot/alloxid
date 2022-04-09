@@ -1,0 +1,14 @@
+[app]
+# A URL to be allowed for CORS, e.g. the URL of the frontend app.
+cors_url = "http://localhost:8080"
+host = "127.0.0.1"
+port = 3000
+# Should be set via env var APP_SECRET.
+secret = ""
+
+[database]
+host = "127.0.0.1"
+name = "alloxid"
+password = "password"
+port = 54321
+username = "postgres"
