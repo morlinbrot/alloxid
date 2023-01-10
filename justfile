@@ -18,16 +18,18 @@ init:
 test *PARAMS:
   cargo nextest run {{PARAMS}}
 
-watch *PARAMS:
-  cargo watch -s "just test" {{PARAMS}}
+# cargo-watch another just recipe
+watch cmd *PARAMS:
+  cargo watch -s "just {{cmd}} {{PARAMS}}"
 
 # Run the http server
 http *PARAMS:
   cargo run {{PARAMS}}
 
+# Run the Dioxus frontend
 front *PARAMS:
   cd alloxid-front; dioxus serve
 
-# Run clippy
-clip *PARAMS:
-  cargo clippy {{PARAMS}}
+# Run the gRPC server
+grpc *PARAMS:
+  cd alloxid-grpc; cargo run {{PARAMS}}

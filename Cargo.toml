@@ -2,5 +2,6 @@
 default-members = ["alloxid-http"]
 members = [
     "alloxid-front",
+    "alloxid-grpc",
     "alloxid-http",
 ]

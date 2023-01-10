@@ -61,3 +61,9 @@ impl From<sqlx::Error> for ServiceError {
         Self::LibError(err.to_string())
     }
 }
+
+impl From<tonic::transport::Error> for ServiceError {
+    fn from(err: tonic::transport::Error) -> Self {
+        Self::LibError(err.to_string())
+    }
+}

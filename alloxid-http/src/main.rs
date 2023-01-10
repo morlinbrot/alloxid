@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
     let settings = Settings::new()?;
 
     let address = format!("{}:{}", settings.app.host, settings.app.port);
-    let cors_url = format!("{}", settings.app.cors_url);
+    let cors_url = settings.app.cors_url.to_string();
 
     let db_pool = PgPool::connect(&settings.database.full_url()).await?;
     let app = configure_app(db_pool, settings).await?;

@@ -1,9 +1,10 @@
 # alloxid
 'Tis all oxidized!
 
-Family of crates for a web stack written fully in Rust featuring
-- A backend made with [axum](https://github.com/tokio-rs/axum) with JWT authentication and a dockerized database.
+Family of crates for a cloud-native microservices stack written fully in Rust featuring
+- A backend made with [axum](https://github.com/tokio-rs/axum) with JWT authentication and a dockerized database
 - A frontend made with [Dioxus](https://github.com/dioxuslabs/dioxus)
+- A collection of gRPC services made with [Tonic](https://github.com/hyperium/tonic)
 
 ## Prerequisites
 - [`Docker`](https://www.docker.com/)
@@ -22,6 +23,10 @@ just run
 In another terminal:
 ```
 just front
+```
+And yet another terminal:
+```
+just grpc
 ```
 See the individual crates' READMEs for additional details.  
 

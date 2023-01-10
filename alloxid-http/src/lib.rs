@@ -23,6 +23,7 @@ mod database;
 mod endpoints;
 mod helpers;
 
+use endpoints::grpc;
 use endpoints::user;
 use error::*;
 use settings::Settings;
@@ -83,6 +84,8 @@ pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<axum::
         ))
         .layer(cors);
 
+    let grpc_routes = Router::new().route("/hello", get(grpc::hello));
+
     let app = Router::new()
         // .route("/", get(root))
         .route("/health-check", get(health_check))
@@ -92,6 +95,7 @@ pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<axum::
             "/user/:id",
             get(user::get).put(user::update).delete(user::delete),
         )
+        .nest("/grpc", grpc_routes)
         .layer(service);
 
     let app = app.fallback(handle_404.into_service());
