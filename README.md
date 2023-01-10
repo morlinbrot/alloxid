@@ -5,16 +5,29 @@ Family of crates for a web stack written fully in Rust featuring
 - A backend made with [axum](https://github.com/tokio-rs/axum) with JWT authentication and a dockerized database.
 - A frontend made with [Dioxus](https://github.com/dioxuslabs/dioxus)
 
+## Prerequisites
+- [`Docker`](https://www.docker.com/)
+- [`sqlx-cli`](https://crates.io/crates/sqlx-cli)
+- [`dioxus-cli`](https://crates.io/crates/dioxus-cli)
+
+The app uses the `dotenv` crate to read env vars and expects a `DATABASE_URL`, `DATABASE_PASSWORD` and `APP_SECRET` to be set. Consider using a .env file in the root for this.
+
 ## Usage
-See the individual crates' READMEs for details.  
+This project uses the awesome [just command runner](https://github.com/casey/just). Run `just` in the root folder to see the available commands.
 
-In the root folder, run the backend with
+Quickstart:
 ```
-cargo run
+just run
 ```
-The app expects a `DATABASE_URL`, `DATABASE_PASSWORD` and `APP_SECRET` to be set. Consider using a .env file in the root for this.
+In another terminal:
+```
+just front
+```
+See the individual crates' READMEs for additional details.  
 
-In another terminal, run the frontend with [dioxus-cli](https://crates.io/crates/dioxus-cli):
+## Debugging
+Enter the container and have a look at the database (-it - interactive tty):
 ```
-dioxus serve
+docker exec -it alloxid_db bash
+psql -U postgres -d alloxid
 ```
