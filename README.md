@@ -28,7 +28,11 @@ And yet another terminal:
 ```
 just grpc
 ```
-See the individual crates' READMEs for additional details.  
+Some of the commands can be chained and applied to a specific crate, e.g.:
+```
+just watch test grpc
+```
+Will `cargo-watch` running `nextest` in the `alloxid-grpc` crate.
 
 ## Debugging
 Enter the container and have a look at the database (-it - interactive tty):
