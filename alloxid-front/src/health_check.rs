@@ -29,8 +29,8 @@ pub fn HealthCheck(cx: Scope) -> Element {
 
     cx.render(rsx!(
         div {
-            p { "Server message:" }
-            p { "{message}" }
+            h2 { "Health check" }
+            p { "Server says:" br { } "{message}" }
         }
     ))
 }

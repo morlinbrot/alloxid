@@ -16,7 +16,7 @@ asset_dir = "public"
 [web.app]
 
 # HTML title tag content
-title = "dioxus | ⛺"
+title = "alloxid"
 
 [web.watcher]
 
@@ -30,7 +30,10 @@ watch_path = ["src", "public"]
 [web.resource]
 
 # CSS style file
-style = []
+style = [
+  "https://unpkg.com/@picocss/pico@1.*/css/pico.min.css",
+  "main.css",
+]
 
 # Javascript code file
 script = []

@@ -12,11 +12,35 @@ fn main() {
 }
 
 fn app(cx: Scope) -> Element {
-    cx.render(rsx! (
-        div {
-            style: "text-align: center;",
-            h1 { "🥳 alloxid-front 🎉" }
-            HealthCheck { }
+    cx.render(rsx! {
+        Router {
+            header { class: "container", style: "padding-top: 3rem; padding-bottom: 3rem;",
+                nav {
+                    ul {
+                        li {
+                            h1 { style: "margin-bottom: 0;",  "alloxid" }
+                            strong {  "🥳 'tis all oxidized! 🎉" }
+                        }
+                    }
+
+                    ul {
+                        li { Link { to: "/health", "health check" } }
+                        li { Link { to: "/sign-in", button { "Sign In" } } }
+                    }
+                }
+            }
+
+            main { class: "container",
+                Route { to: "/",
+                    h2 { "Home" }
+                }
+                Route { to: "/health",
+                    HealthCheck { }
+                }
+                Route { to: "",
+                    h2 { "Oops, 404." }
+                }
+            }
         }
-    ))
+    })
 }
