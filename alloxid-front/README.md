@@ -32,3 +32,4 @@ The project was last run on this version of the `dioxus-cli`.
   });
 </script>
 ```
+- fermi does not seem to be usable. `use_read` complains about the `Scope` being from the prelude, not core, don't knwo how to fix.

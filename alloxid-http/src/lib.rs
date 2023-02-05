@@ -9,7 +9,7 @@ use http::{Method, Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
 use tower::ServiceBuilder;
-use tower_http::cors::{CorsLayer, Origin};
+use tower_http::cors::{Any, CorsLayer, Origin};
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
@@ -73,7 +73,8 @@ pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<axum::
                 .parse()
                 .expect("Failed to parse frontend url"),
         ))
-        .allow_methods(vec![Method::GET, Method::POST]);
+        .allow_methods(vec![Method::GET, Method::POST])
+        .allow_headers(Any);
 
     let state = Arc::new(State { db_pool, settings });
 

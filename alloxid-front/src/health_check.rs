@@ -7,7 +7,7 @@ pub fn HealthCheck(cx: Scope) -> Element {
     let fut = use_future(&cx, (), |_| async move {
         let client = reqwest::Client::new();
         client
-            .get("http://localhost:3000/health-check")
+            .get("{API_URL}/health-check")
             .send()
             .await?
             .text()
@@ -28,9 +28,7 @@ pub fn HealthCheck(cx: Scope) -> Element {
     };
 
     cx.render(rsx!(
-        div {
-            h2 { "Health check" }
-            p { "Server says:" br { } "{message}" }
-        }
+        h2 { "Health check" }
+        p { "Server says:" br { } "{message}" }
     ))
 }
