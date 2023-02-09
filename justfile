@@ -40,9 +40,9 @@ watch cmd *PARAMS:
 http *PARAMS:
   cargo run {{PARAMS}}
 
-# Run the Dioxus frontend
+# Run the Perseus frontend
 front *PARAMS:
-  cd alloxid-front; dioxus serve
+  cd alloxid-front; perseus serve -w
 
 # Run the gRPC server
 grpc *PARAMS:
