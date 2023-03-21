@@ -61,7 +61,7 @@ impl fmt::Display for Role {
 
 pub fn create(user_id: UserId, role: Role) -> Result<String, ServiceError> {
     let exp = Utc::now()
-        .checked_add_signed(chrono::Duration::seconds(60))
+        .checked_add_signed(chrono::Duration::days(7))
         .expect("Failed to create valid timestamp")
         .timestamp();
 

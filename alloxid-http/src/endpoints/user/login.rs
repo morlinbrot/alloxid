@@ -4,7 +4,7 @@ use http::Response;
 use tracing::{debug, debug_span, error, info, Instrument};
 
 use crate::error::ServiceError;
-use crate::model::user::UserCreateRaw;
+use crate::model::user::{UserAuthData, UserCreateRaw};
 use crate::JsonBody;
 use crate::{helpers, StateExtension};
 
@@ -70,7 +70,11 @@ pub async fn login(
     .instrument(query_token_span)
     .await?;
 
-    let json = serde_json::to_string(&JsonBody::new(row.token))?;
+    let data = UserAuthData {
+        token: row.token,
+        id: user_id,
+    };
+    let json = serde_json::to_vec(&JsonBody::new(data))?;
 
     info!("Successfully logged in user_id={}", user_id);
     Ok(Response::new(Body::from(json)))

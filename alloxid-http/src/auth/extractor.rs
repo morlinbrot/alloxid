@@ -25,6 +25,7 @@ impl AuthUser {
             error!("Authorization header is not UTF-8");
             ServiceError::Unauthorized
         })?;
+
         debug!("Parsed auth_header: {:?}", &auth_header);
 
         if !auth_header.starts_with(SCHEME_PREFIX) {
@@ -39,7 +40,10 @@ impl AuthUser {
             &DecodingKey::from_secret(SECRET),
             &Validation::new(Algorithm::HS512),
         )
-        .expect("Failed to decode token.");
+        .map_err(|err| {
+            error!("Failed to decode token: {:?}", err);
+            ServiceError::TokenExtractionError
+        })?;
 
         // TODO: Move this to a new struct `AdminUser`.
         let role = Role::User;

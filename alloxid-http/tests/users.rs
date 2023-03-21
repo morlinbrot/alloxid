@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tracing::{info, instrument};
 
-use alloxid_http::model::user::{UserCreatedData, UserData};
+use alloxid_http::model::user::{UserAuthData, UserData};
 use alloxid_http::JsonBody;
 
 mod helpers;
@@ -53,7 +53,7 @@ async fn create_user_and_login() {
     // dbg!(&res.headers().get("Location"));
     assert!(res.headers().get("Location").is_some());
 
-    let body: JsonBody<UserCreatedData> = res.json().await.unwrap();
+    let body: JsonBody<UserAuthData> = res.json().await.unwrap();
     let user = body.data;
     dbg!(&user);
     assert!(!user.id.is_nil());
@@ -72,10 +72,11 @@ async fn create_user_and_login() {
     dbg!(&res);
     assert_eq!(res.status(), 200);
 
-    let body: JsonBody<String> = res.json().await.unwrap();
-    let token = body.data;
-    dbg!(&token);
+    let body: JsonBody<UserAuthData> = res.json().await.unwrap();
+    let UserAuthData { id, token } = body.data;
+    dbg!(&id, &token);
     assert!(!token.is_empty());
+    assert_eq!(user.id, id);
 
     let route = format!("/user/{}", user.id);
 
@@ -172,7 +173,7 @@ async fn get_user_without_token_returns_401() {
     );
 
     let (res, _) = create_user(&app).await;
-    let body: JsonBody<UserCreatedData> = res.json().await.unwrap();
+    let body: JsonBody<UserAuthData> = res.json().await.unwrap();
     let user = body.data;
 
     let route = format!("/user/{}", user.id);
@@ -195,7 +196,7 @@ async fn get_user_with_malformed_token_returns_401() {
     );
 
     let (res, _) = create_user(&app).await;
-    let body: JsonBody<UserCreatedData> = res.json().await.unwrap();
+    let body: JsonBody<UserAuthData> = res.json().await.unwrap();
     let user = body.data;
 
     let route = format!("/user/{}", user.id);
@@ -228,7 +229,7 @@ async fn put_user_data_returns_200() {
     );
 
     let (res, _) = create_user(&app).await;
-    let body: JsonBody<UserCreatedData> = res.json().await.unwrap();
+    let body: JsonBody<UserAuthData> = res.json().await.unwrap();
     let user = body.data;
     let token = user.token;
 
@@ -265,7 +266,7 @@ async fn delete_user_returns_200_then_403() {
     );
 
     let (res, _) = create_user(&app).await;
-    let body: JsonBody<UserCreatedData> = res.json().await.unwrap();
+    let body: JsonBody<UserAuthData> = res.json().await.unwrap();
     let user = body.data;
     let token = user.token;
 

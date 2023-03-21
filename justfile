@@ -8,9 +8,12 @@ clean:
 
 # Set up docker image, create db and run migrations
 init:
-  just clean
   ./scripts/init_db.sh
 
+reset:
+  just clean
+  just init
+  
 # Run the specified crate
 run crate="http":
   just {{crate}}
@@ -42,7 +45,7 @@ http *PARAMS:
 
 # Run the Dioxus frontend
 front *PARAMS:
-  cd alloxid-front; dioxus serve
+  cd alloxid-front; deno task start
 
 # Run the gRPC server
 grpc *PARAMS:
