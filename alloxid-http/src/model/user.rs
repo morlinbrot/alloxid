@@ -11,9 +11,9 @@ pub struct UserCreateRaw {
     pub password: String,
 }
 
-// Returned by the create endpoint.
+// Returned by the create and login endpoints.
 #[derive(Debug, Deserialize, Serialize)]
-pub struct UserCreatedData {
+pub struct UserAuthData {
     pub id: Uuid,
     pub token: String,
 }

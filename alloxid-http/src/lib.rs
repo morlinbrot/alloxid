@@ -11,6 +11,7 @@ use sqlx::postgres::PgPool;
 use tower::ServiceBuilder;
 use tower_http::cors::{CorsLayer, Origin};
 use tower_http::trace::TraceLayer;
+use tracing::debug;
 use uuid::Uuid;
 
 pub mod error;
@@ -49,6 +50,7 @@ pub struct State {
 }
 
 async fn health_check() -> &'static str {
+    // debug!("Health check called");
     "Hello, healthy world!"
 }
 
@@ -80,7 +82,7 @@ pub async fn configure_app(db_pool: PgPool, settings: Settings) -> Result<axum::
     let service = ServiceBuilder::new()
         .layer(Extension(state))
         .layer(TraceLayer::new_for_http().make_span_with(
-            |_req: &Request<Body>| tracing::debug_span!( "http-request", req_id = %Uuid::new_v4()),
+            |_req: &Request<Body>| tracing::debug_span!("request", req_id = %Uuid::new_v4()),
         ))
         .layer(cors);
 

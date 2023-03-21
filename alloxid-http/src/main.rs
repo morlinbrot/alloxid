@@ -21,6 +21,7 @@ async fn main() -> Result<()> {
         "\nServer listening on {}, CORS allowed for {}",
         address, cors_url
     );
+
     axum::Server::bind(&address.parse().expect("Failed to parse app address."))
         .serve(app.into_make_service())
         .await

@@ -7,7 +7,7 @@ use tracing::{debug, debug_span, error, Instrument};
 
 use crate::database::{insert_auth_token, insert_new_user};
 use crate::error::ServiceError;
-use crate::model::user::{UserCreateRaw, UserCreatedData, ValidUserData};
+use crate::model::user::{UserAuthData, UserCreateRaw, ValidUserData};
 use crate::JsonBody;
 use crate::StateExtension;
 
@@ -46,7 +46,7 @@ pub(crate) async fn create(
             err
         })?;
 
-    let data = UserCreatedData { token, id: user.id };
+    let data = UserAuthData { token, id: user.id };
     let json = serde_json::to_vec(&JsonBody::new(data))?;
 
     let location = format!(
